@@ -8,7 +8,7 @@ import path from 'path';
 import { logInfo, logError, logWarn, logDebug } from '../logger/index.js';
 import {
     CHAT_PAGE_URL, NAVIGATION_TIMEOUT, RETRY_DELAY, PROTOCOL_TIMEOUT,
-    VIEWPORT_WIDTH, VIEWPORT_HEIGHT, USER_AGENT,
+    VIEWPORT_WIDTH, VIEWPORT_HEIGHT, USER_AGENT, CHROME_PROFILE_DIR,
     SESSION_DIR, ACCOUNTS_DIR
 } from '../config.js';
 
@@ -16,29 +16,69 @@ puppeteer.use(StealthPlugin());
 
 let browserInstance = null;
 let browserContext = null;
+let browserVisibleMode = false;
 export let isAuthenticated = false;
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Создаёт рабочую страницу из контекста/страницы браузера. Вынесена сюда,
+// чтобы chat.js и x5secSolver.js делили одну реализацию без циклических импортов.
+export async function getPageFromContext(context) {
+    if (context && typeof context.newPage === 'function') {
+        return await context.newPage();
+    }
+
+    if (context && typeof context.goto === 'function') {
+        // Если передана Puppeteer Page, не переиспользуем её как рабочую:
+        // создаём отдельную вкладку из того же браузера, чтобы избежать гонок
+        // и случайного закрытия базовой страницы.
+        if (typeof context.browser === 'function') {
+            try {
+                const browser = context.browser();
+                if (browser && typeof browser.newPage === 'function') {
+                    return await browser.newPage();
+                }
+            } catch (error) {
+                logWarn(`Не удалось создать новую страницу из текущего контекста: ${error.message}`);
+            }
+        }
+
+        if (typeof context.isClosed === 'function' && context.isClosed()) {
+            throw new Error('Базовая страница браузера закрыта');
+        }
+
+        return context;
+    }
+
+    throw new Error('Неверный контекст: не страница Puppeteer, не контекст Playwright');
+}
+
+export function isBrowserVisibleMode() { return browserVisibleMode; }
+
 export async function initBrowser(visibleMode = true, skipManualRestart = false) {
     if (browserInstance) return true;
 
+    browserVisibleMode = visibleMode;
     logInfo('Инициализация браузера с Puppeteer Stealth...');
     try {
         browserInstance = await puppeteer.launch({
             headless: !visibleMode,
             slowMo: visibleMode ? 30 : 0,
             executablePath: process.env.CHROME_PATH || undefined,
+            // Убираем флаги-маркеры автоматизации, чтобы браузер не отличался от реального Chrome:
+            // --enable-automation (infobar «управляется тестовым ПО») puppeteer добавляет по умолчанию.
+            ignoreDefaultArgs: ['--enable-automation'],
+            userDataDir: CHROME_PROFILE_DIR,
             args: [
                 '--no-sandbox', '--disable-setuid-sandbox',
                 '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage', '--disable-web-security',
+                '--disable-dev-shm-usage',
                 '--disable-features=IsolateOrigins,site-per-process',
                 `--window-size=${VIEWPORT_WIDTH},${VIEWPORT_HEIGHT}`,
                 '--start-maximized', '--disable-infobars',
                 '--disable-extensions', '--disable-gpu',
                 '--no-first-run', '--no-default-browser-check',
-                '--ignore-certificate-errors', '--ignore-certificate-errors-spki-list'
+                '--lang=en-US'
             ],
             defaultViewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
             protocolTimeout: PROTOCOL_TIMEOUT,
@@ -99,13 +139,42 @@ export async function initBrowser(visibleMode = true, skipManualRestart = false)
             };
         });
 
+        // В headless-режиме восстанавливаем cookie-сессию из сохранённого аккаунта
+        // и загружаем страницу Qwen: антибот-скрипты (acw_tc, tfstk и т.д.)
+        // выполняются только на реальной странице с origin chat.qwen.ai.
+        // Без этого fetch на пустой вкладке даёт "Qwen anti-bot challenge" на
+        // completion (chats/new при этом проходит по cookie token).
+        if (!visibleMode) {
+            try {
+                const accountsDir = path.join(process.cwd(), SESSION_DIR, ACCOUNTS_DIR);
+                if (fs.existsSync(accountsDir)) {
+                    const accDirs = fs.readdirSync(accountsDir)
+                        .filter(d => fs.existsSync(path.join(accountsDir, d, 'cookies.json')));
+                    if (accDirs.length > 0) {
+                        const cookies = JSON.parse(fs.readFileSync(path.join(accountsDir, accDirs[0], 'cookies.json'), 'utf8'));
+                        await page.setCookie(...cookies);
+                        logInfo(`Cookies восстановлены из session/accounts/${accDirs[0]}`);
+                    }
+                }
+                // Загружаем страницу, чтобы инициализировать антибот-окружение (обязательно для completion).
+                await page.goto(CHAT_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: NAVIGATION_TIMEOUT });
+                await delay(4000);
+                const finalUrl = page.url();
+                logInfo(`Страница Qwen загружена в headless-режиме: ${finalUrl}`);
+                if (/\/auth/.test(finalUrl)) {
+                    logWarn('Qwen перенаправил на страницу авторизации — cookie-сессия могла истечь');
+                }
+            } catch (e) {
+                logWarn(`Не удалось восстановить cookies: ${e.message}`);
+            }
+        }
+
         browserContext = page;
         logInfo('Браузер инициализирован с максимальной защитой от обнаружения');
 
         if (visibleMode) {
             await startManualAuthenticationPuppeteer(page, skipManualRestart);
         }
-        // loadSessionPuppeteer removed — was dead code (always returned false)
 
         return true;
     } catch (error) {

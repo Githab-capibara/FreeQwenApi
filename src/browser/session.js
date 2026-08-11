@@ -30,7 +30,23 @@ export async function saveSession(context, accountId = null) {
         const isPlaywright = context && typeof context.storageState === 'function';
 
         if (isPuppeteer) {
-            const cookies = await context.cookies();
+            // ВАЖНО: page.cookies() без аргументов возвращает cookies ТОЛЬКО для
+            // текущего origin страницы. После решения x5sec-капчи страница может
+            // редиректнуть на другой домен (например taobao.com — заглушка WAF),
+            // и cookies chat.qwen.ai (включая свежий x5sec) окажутся невидимы.
+            // Поэтому берём cookies со ВСЕГО браузера, когда это возможно.
+            let cookies;
+            try {
+                if (typeof context.browser === 'function' && context.browser()) {
+                    const browser = context.browser();
+                    if (typeof browser.cookies === 'function') {
+                        cookies = await browser.cookies();
+                    }
+                }
+            } catch (browserCookiesError) {
+                logWarn(`saveSession: не удалось получить cookies браузера целиком (${browserCookiesError.message?.slice(0, 80)}), fallback к page.cookies()`);
+            }
+            if (!cookies) cookies = await context.cookies();
             const sessionPath = getSessionFilePath(accountId, 'cookies.json');
             ensureDir(path.dirname(sessionPath));
             fs.writeFileSync(sessionPath, JSON.stringify(cookies, null, 2));

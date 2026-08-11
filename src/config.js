@@ -59,10 +59,17 @@ export const PROTOCOL_TIMEOUT = Number(process.env.PROTOCOL_TIMEOUT) || 300_000;
 export const AUTH_TIMEOUT = Number(process.env.AUTH_TIMEOUT) || 120_000;
 export const NAVIGATION_TIMEOUT = Number(process.env.NAVIGATION_TIMEOUT) || 60_000;
 export const RETRY_DELAY = Number(process.env.RETRY_DELAY) || 2_000;
+// Глобальная пауза при anti-bot (punish) Qwen: пока активна, все запросы возвращают 429 без обращения к Qwen.
+export const ANTI_BOT_COOLDOWN_MS = Number(process.env.ANTI_BOT_COOLDOWN_MS) || 10 * 60_000;
 export const STREAMING_CHUNK_DELAY = Number(process.env.STREAMING_CHUNK_DELAY) || 20;
 
 // ─── Лимиты ─────────────────────────────────────────────────────────────────
 export const PAGE_POOL_SIZE = Number(process.env.PAGE_POOL_SIZE) || 3;
+// Глобальный лимит одновременных запросов к Qwen + случайная задержка между ними:
+// пакетные запросы триггерят anti-bot (punish), поэтому разносим по времени.
+export const GLOBAL_REQUEST_CONCURRENCY = Number(process.env.GLOBAL_REQUEST_CONCURRENCY) || 2;
+export const REQUEST_JITTER_MIN_MS = Number(process.env.REQUEST_JITTER_MIN_MS) || 800;
+export const REQUEST_JITTER_MAX_MS = Number(process.env.REQUEST_JITTER_MAX_MS) || 2_500;
 export const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10 MB
 export const MAX_HISTORY_LENGTH = Number(process.env.MAX_HISTORY_LENGTH) || 100;
 export const MAX_RETRY_COUNT = Number(process.env.MAX_RETRY_COUNT) || 3;
@@ -78,7 +85,9 @@ export const LOGS_DIR = process.env.LOGS_DIR || 'logs';
 // ─── Браузер ─────────────────────────────────────────────────────────────────
 export const VIEWPORT_WIDTH = Number(process.env.VIEWPORT_WIDTH) || 1920;
 export const VIEWPORT_HEIGHT = Number(process.env.VIEWPORT_HEIGHT) || 1080;
-export const USER_AGENT = process.env.USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+export const USER_AGENT = process.env.USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
+// Нейтральный профиль вместо дефолтного /tmp/puppeteer_dev_profile-* (маркер автоматизации).
+export const CHROME_PROFILE_DIR = process.env.CHROME_PROFILE_DIR || '/tmp/freeqwen-chrome-profile';
 
 // ─── Сервер ──────────────────────────────────────────────────────────────────
 export const PORT = Number(process.env.PORT) || 3264;

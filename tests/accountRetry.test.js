@@ -55,7 +55,8 @@ test('account-switch retry resets Qwen chat ownership and preserves agent contex
     3,
     onChunk,
     resetMessage,
-    clientScope
+    clientScope,
+    false
   ]);
 });
 
@@ -75,7 +76,8 @@ test('account-switch retry helper uses safe sendMessage defaults', () => {
     1,
     null,
     null,
-    null
+    null,
+    false
   ]);
 });
 
