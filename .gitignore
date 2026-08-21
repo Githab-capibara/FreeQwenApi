@@ -36,6 +36,10 @@ venv/
 .idea/
 .vscode/
 *.swp
-*.swo 
+*.swo
+
+# AI assistant sessions
+.claude/
+.omo/
 
 src/Authorization.txt
