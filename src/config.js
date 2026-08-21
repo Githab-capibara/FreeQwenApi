@@ -60,14 +60,20 @@ export const AUTH_TIMEOUT = Number(process.env.AUTH_TIMEOUT) || 120_000;
 export const NAVIGATION_TIMEOUT = Number(process.env.NAVIGATION_TIMEOUT) || 60_000;
 export const RETRY_DELAY = Number(process.env.RETRY_DELAY) || 2_000;
 // Глобальная пауза при anti-bot (punish) Qwen: пока активна, все запросы возвращают 429 без обращения к Qwen.
-export const ANTI_BOT_COOLDOWN_MS = Number(process.env.ANTI_BOT_COOLDOWN_MS) || 10 * 60_000;
+// 2 минуты вместо 10: 10-минутный отказ убивает интерактивных клиентов (OCR-сканеры с таймаутом),
+// а Qwen punish после слайдера снимается быстрее. При успешном решении капчи cooldown не включается.
+export const ANTI_BOT_COOLDOWN_MS = Number(process.env.ANTI_BOT_COOLDOWN_MS) || 2 * 60_000;
 export const STREAMING_CHUNK_DELAY = Number(process.env.STREAMING_CHUNK_DELAY) || 20;
 
 // ─── Лимиты ─────────────────────────────────────────────────────────────────
 export const PAGE_POOL_SIZE = Number(process.env.PAGE_POOL_SIZE) || 3;
 // Глобальный лимит одновременных запросов к Qwen + случайная задержка между ними:
 // пакетные запросы триггерят anti-bot (punish), поэтому разносим по времени.
-export const GLOBAL_REQUEST_CONCURRENCY = Number(process.env.GLOBAL_REQUEST_CONCURRENCY) || 2;
+// 1 вместо 2: даже ДВА одновременных запроса видны Qwen как burst-паттерн.
+export const GLOBAL_REQUEST_CONCURRENCY = Number(process.env.GLOBAL_REQUEST_CONCURRENCY) || 1;
+// Per-account concurrency: effective parallelism = number of healthy accounts;
+// within one account ACCOUNT_CONCURRENCY stays 1 to avoid Qwen anti-bot burst detection.
+export const ACCOUNT_CONCURRENCY = Number(process.env.ACCOUNT_CONCURRENCY) || GLOBAL_REQUEST_CONCURRENCY || 1;
 export const REQUEST_JITTER_MIN_MS = Number(process.env.REQUEST_JITTER_MIN_MS) || 800;
 export const REQUEST_JITTER_MAX_MS = Number(process.env.REQUEST_JITTER_MAX_MS) || 2_500;
 export const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024; // 10 MB

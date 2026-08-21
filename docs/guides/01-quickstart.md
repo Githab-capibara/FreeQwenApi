@@ -24,7 +24,7 @@ npm run models:sync
 This command reads public prerendered model metadata from `https://chat.qwen.ai/`, merges it with `src/AvailableModels.txt`, and writes the report here:
 
 ```text
-docs/setup/03-qwen-models.md
+docs/setup/03-model-sync-report.md
 ```
 
 ## 3. Start the Endpoint

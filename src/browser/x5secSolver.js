@@ -72,28 +72,79 @@ export async function solveX5secChallenge(page, punishUrl, { maxAttempts = 3, wa
     }
 }
 
-// Траектория движения мыши: ease-in-out + джиттер + человеческие паузы.
-// Ползунок едет ~258px за 900-1400мс — медленнее, чем «роботизированные» 0.4-0.8с
-// (быстрая ровная трасса ловится серверным fy-анализом как BXFASTMARK).
+// Улучшенная human-like траектория движения мыши.
+// Реальные люди двигают мышь НЕидеально:
+// - Начальная пауза 150-400ms перед движением
+// - Разгон нелинейный (quadratic)
+// - Микро-коррекции траектории (sin-волна)
+// - Jitter 2-5px (не 1.5px!)
+// - Случайные паузы в середине движения
+// - Финальная пауза 200-500ms перед отпусканием
+// Общее время: 1200-2500ms (медленнее роботизированных 400-800ms)
 export function buildTrajectory(startX, endX, steps = 28) {
     const pts = [];
-    const durationMs = 600 + Math.random() * 400;
-    // накопленное время: лёгкий разгон в начале, плавное торможение в конце
-    let acc = 0;
-    for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-        const jitter = (Math.random() - 0.5) * 1.5;
-        const x = startX + (endX - startX) * eased + jitter;
-        // паузы 8-30мс, в середине чуть чаще (нерегулярный ритм человека)
-        const delay = 8 + Math.random() * 22 + (t > 0.35 && t < 0.7 ? Math.random() * 10 : 0);
-        acc += delay;
+    const distance = endX - startX;
+
+    // 1. Начальная пауза (человек не начинает движение мгновенно)
+    const startPause = 150 + Math.random() * 250;
+    pts.push({ x: startX, delay: startPause });
+
+    // 2. Фаза разгона (5-12 шагов) - quadratic acceleration
+    const accelSteps = 5 + Math.floor(Math.random() * 8);
+    for (let i = 1; i <= accelSteps; i++) {
+        const t = i / (accelSteps + 15);
+        const progress = t * t; // Quadratic acceleration
+        const jitter = (Math.random() - 0.5) * 3.5; // Увеличенный jitter
+        const x = startX + distance * progress + jitter;
+        const delay = 20 + Math.random() * 35;
         pts.push({ x, delay });
     }
-    // масштабируем паузы, чтобы итоговая длительность была ~durationMs
-    const scale = durationMs / Math.max(acc, 1);
-    for (const pt of pts) pt.delay *= scale;
-    return pts;
+
+    // 3. Основная фаза с микро-коррекциями (10-25 шагов)
+    const midSteps = 10 + Math.floor(Math.random() * 15);
+    for (let i = 0; i < midSteps; i++) {
+        const t = (accelSteps + 1 + i) / (accelSteps + midSteps + 10);
+        // Sigmoid curve для естественного движения
+        const progress = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        // Микро-коррекции (затухающие к концу) - человек постоянно корректирует движение
+        const correction = Math.sin(t * Math.PI * 3) * 2 * (1 - t);
+        const jitter = (Math.random() - 0.5) * 2.5;
+        const x = startX + distance * progress + correction + jitter;
+        // Нерегулярные паузы (чаще в середине движения)
+        const pauseChance = t > 0.35 && t < 0.65 ? 0.35 : 0.08;
+        const delay = Math.random() < pauseChance
+            ? 50 + Math.random() * 80  // Пауза 50-130ms
+            : 12 + Math.random() * 28; // Обычное движение 12-40ms
+        pts.push({ x, delay });
+    }
+
+    // 4. Фаза торможения (8-15 шагов)
+    const decelSteps = 8 + Math.floor(Math.random() * 7);
+    for (let i = 1; i <= decelSteps; i++) {
+        const t = 1 - (i / decelSteps) * 0.15;
+        const jitter = (Math.random() - 0.5) * 1.5;
+        const x = startX + distance * t + jitter;
+        const delay = 35 + Math.random() * 45; // Медленнее к концу
+        pts.push({ x, delay });
+    }
+
+    // 5. Финальная пауза перед отпусканием (человек замирает перед release)
+    pts.push({
+        x: endX + (Math.random() - 0.5) * 0.5,
+        delay: 250 + Math.random() * 350
+    });
+
+    // Нормализация: убираем точки, которые идут назад (nc детектит backtrack)
+    const normalized = [];
+    let prevX = startX;
+    for (const pt of pts) {
+        if (pt.x >= prevX - 0.3) { // Небольшой допуск на floating point
+            normalized.push({ ...pt, x: Math.max(pt.x, prevX) });
+            prevX = pt.x;
+        }
+    }
+
+    return normalized;
 }
 
 // Коды отказа nc: BXMARK (поведенческая метка), BXFASTMARK (слишком быстро),

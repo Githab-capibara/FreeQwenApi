@@ -1,7 +1,11 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import AdblockerPlugin from 'puppeteer-extra-plugin-adblocker';
+import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha';
 import { saveSession, saveAuthToken } from './session.js';
 import { startManualAuthentication } from './auth.js';
+import { getRandomUserAgent, getRandomAcceptLanguage, getRandomTimezone } from './userAgentRotator.js';
+import { proxyManager } from './proxyManager.js';
 import { clearPagePool, getAuthToken } from '../api/chat.js';
 import fs from 'fs';
 import path from 'path';
@@ -12,7 +16,10 @@ import {
     SESSION_DIR, ACCOUNTS_DIR
 } from '../config.js';
 
+// === МАКСИМАЛЬНАЯ STEALTH КОНФИГУРАЦИЯ ===
 puppeteer.use(StealthPlugin());
+// AdblockerPlugin отключён — блокирует CDN ресурсы Qwen (CSS/JS) как трекеры
+// puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
 let browserInstance = null;
 let browserContext = null;
@@ -58,86 +65,147 @@ export function isBrowserVisibleMode() { return browserVisibleMode; }
 export async function initBrowser(visibleMode = true, skipManualRestart = false) {
     if (browserInstance) return true;
 
-    browserVisibleMode = visibleMode;
-    logInfo('Инициализация браузера с Puppeteer Stealth...');
-    try {
-        browserInstance = await puppeteer.launch({
-            headless: !visibleMode,
-            slowMo: visibleMode ? 30 : 0,
-            executablePath: process.env.CHROME_PATH || undefined,
-            // Убираем флаги-маркеры автоматизации, чтобы браузер не отличался от реального Chrome:
-            // --enable-automation (infobar «управляется тестовым ПО») puppeteer добавляет по умолчанию.
-            ignoreDefaultArgs: ['--enable-automation'],
-            userDataDir: CHROME_PROFILE_DIR,
-            args: [
-                '--no-sandbox', '--disable-setuid-sandbox',
-                '--disable-blink-features=AutomationControlled',
+        browserVisibleMode = visibleMode;
+        logInfo('Инициализация браузера с МАКСИМАЛЬНОЙ stealth защитой...');
+
+        // Proxy rotation: получаем прокси для смены IP
+        const proxy = proxyManager.getRandomProxy();
+        if (proxy) {
+            logInfo(`Используем прокси: ${proxy.slice(0, 20)}...`);
+        }
+
+        try {
+            // === МАКСИМАЛЬНЫЙ СПИСОК ANTI-DETECT АРГУМЕНТОВ ===
+            const launchArgs = [
+                // Базовые security
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-features=IsolateOrigins,site-per-process',
+                // Разрешаем cross-origin запросы (не блокировать CDN)
+                '--disable-web-security',
+                '--allow-running-insecure-content',
+
+                // Anti-detection (минимальные, не ломающие рендеринг)
+                '--disable-features=AcceptCHFrame,MediaRouter,Translate,EyeDropper,WebUIReloadButton,SitePerProcess,IsolateOrigins',
+
+                // Realistic browser behavior
+                '--start-maximized',
+                '--disable-infobars',
+                '--disable-extensions',
+                '--no-first-run',
+                '--no-default-browser-check',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-breakpad',
+                '--force-color-profile=srgb',
+                // Wayland отключён для стабильности
+                '--disable-features=UseOzonePlatform',
+                // Software rendering для стабильности
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+
+                // Window size
                 `--window-size=${VIEWPORT_WIDTH},${VIEWPORT_HEIGHT}`,
-                '--start-maximized', '--disable-infobars',
-                '--disable-extensions', '--disable-gpu',
-                '--no-first-run', '--no-default-browser-check',
-                '--lang=en-US'
-            ],
-            defaultViewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
-            protocolTimeout: PROTOCOL_TIMEOUT,
-            ignoreHTTPSErrors: true
-        });
+            ];
+
+            // Добавляем прокси если есть
+            if (proxy) {
+                launchArgs.push(`--proxy-server=${proxy}`);
+            }
+
+            browserInstance = await puppeteer.launch({
+                headless: !visibleMode,
+                slowMo: visibleMode ? 30 : 0,
+                executablePath: process.env.CHROME_PATH || undefined,
+                ignoreDefaultArgs: ['--enable-automation'],
+                userDataDir: CHROME_PROFILE_DIR,
+                args: launchArgs,
+                defaultViewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
+                protocolTimeout: PROTOCOL_TIMEOUT,
+                ignoreHTTPSErrors: true
+            });
 
         const pages = await browserInstance.pages();
         const page = pages.length > 0 ? pages[0] : await browserInstance.newPage();
 
-        await page.setUserAgent(USER_AGENT);
-        await page.setViewport({ width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+        // Ротация User-Agent для вариативности сессий
+        const randomUA = getRandomUserAgent();
+        await page.setUserAgent(randomUA);
+        logInfo(`User-Agent: ${randomUA.slice(0, 50)}...`);
+
+        // Рандомизация viewport (некоторые пользователи имеют DPI > 1)
+        const randomDPI = 1 + Math.random() * 0.5;
+        await page.setViewport({
+            width: VIEWPORT_WIDTH,
+            height: VIEWPORT_HEIGHT,
+            deviceScaleFactor: randomDPI
+        });
+
         await page.setExtraHTTPHeaders({
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1'
         });
 
-        await page.evaluateOnNewDocument(() => {
+        // Отключаем CSP чтобы скрипты загружались без блокировки
+        await page.setBypassCSP(true);
+
+        // Логирование запросов для отладки (показываем заблокированные)
+        page.on('requestfailed', request => {
+            const url = request.url();
+            const type = request.resourceType();
+            const failure = request.failure();
+            if (failure && (type === 'stylesheet' || type === 'script')) {
+                console.warn(`[BLOCKED] ${type}: ${url} - ${failure.errorText}`);
+            }
+        });
+
+        await page.evaluateOnNewDocument((tz) => {
+            // Timezone spoofing (безопасно)
+            const originalDateTimeFormat = Intl.DateTimeFormat;
+            Intl.DateTimeFormat = function(locale, options) {
+                return new originalDateTimeFormat(locale, { ...options, timeZone: tz });
+            };
+            Intl.DateTimeFormat.prototype = originalDateTimeFormat.prototype;
+
+            // Platform spoofing (безопасно)
             Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+
+            // Hardware concurrency (безопасно)
             Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+
+            // Device memory (безопасно)
             Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [{ 0: { type: 'application/x-google-chrome-pdf', suffixes: 'pdf', description: 'Portable Document Format' }, description: 'Portable Document Format', filename: 'internal-pdf-viewer', length: 1, name: 'Chrome PDF Plugin' }]
-            });
+
+            // Connection (безопасно)
             Object.defineProperty(navigator, 'connection', {
                 get: () => ({ effectiveType: '4g', rtt: 50, downlink: 10, saveData: false })
             });
+
+            // Battery API (безопасно)
             if (!navigator.getBattery) {
-                navigator.getBattery = () => Promise.resolve({ charging: true, chargingTime: 0, dischargingTime: Infinity, level: 1 });
+                navigator.getBattery = () => Promise.resolve({ charging: true, chargingTime: 0, dischargingTime: Infinity, level: 0.85 });
             }
 
-            const originalAddEventListener = EventTarget.prototype.addEventListener;
-            EventTarget.prototype.addEventListener = function (type, listener, options) {
-                if (type === 'mousemove' || type === 'mousedown' || type === 'mouseup') {
-                    const wrappedListener = function (event) { setTimeout(() => listener.call(this, event), Math.random() * 3); };
-                    return originalAddEventListener.call(this, type, wrappedListener, options);
-                }
-                return originalAddEventListener.call(this, type, listener, options);
+            // WebGL vendor (безопасно — не переопределяем prototype)
+            const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function(param) {
+                if (param === 37445) return 'Intel Inc.';
+                if (param === 37446) return 'Intel Iris OpenGL Engine';
+                return originalGetParameter.call(this, param);
             };
 
-            const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
-            HTMLCanvasElement.prototype.toDataURL = function (type) {
-                const context = this.getContext('2d');
-                if (context) {
-                    const imageData = context.getImageData(0, 0, this.width, this.height);
-                    const data = imageData.data;
-                    for (let i = 0; i < data.length; i += 4) {
-                        const noise = Math.floor(Math.random() * 5) - 2;
-                        data[i] = Math.max(0, Math.min(255, data[i] + noise));
-                        data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
-                        data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
-                    }
-                    context.putImageData(imageData, 0, 0);
-                }
-                return originalToDataURL.apply(this, arguments);
-            };
-        });
+            // НЕ переопределяем EventTarget — может ломать скрипты страницы
+            // НЕ добавляем canvas noise — может ломать WebGL контекст
+            // НЕ переопределяем AudioContext — может ломать аудио API
+        }, getRandomTimezone());
 
         // В headless-режиме восстанавливаем cookie-сессию из сохранённого аккаунта
         // и загружаем страницу Qwen: антибот-скрипты (acw_tc, tfstk и т.д.)
@@ -205,7 +273,27 @@ async function saveSessionPuppeteer(page) {
 async function startManualAuthenticationPuppeteer(page, skipManualRestart) {
     try {
         logInfo('Открытие страницы для ручной авторизации...');
-        await page.goto(CHAT_PAGE_URL, { waitUntil: 'networkidle2', timeout: NAVIGATION_TIMEOUT });
+
+        // Проверяем доступность Qwen перед навигацией
+        const https = await import('https');
+        await new Promise((resolve, reject) => {
+            const req = https.get(CHAT_PAGE_URL, { timeout: 10000 }, (res) => {
+                logInfo(`Qwen доступен: HTTP ${res.statusCode}`);
+                resolve();
+            });
+            req.on('error', (e) => {
+                logWarn(`Qwen недоступен: ${e.message}`);
+                reject(e);
+            });
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('Timeout checking Qwen availability'));
+            });
+        });
+
+        await page.goto(CHAT_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+                // Даём время на загрузку CSS/JS и применение стилей
+                await new Promise(r => setTimeout(r, 8000));
         await delay(5000);
 
         console.log('------------------------------------------------------');

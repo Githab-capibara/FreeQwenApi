@@ -15,7 +15,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { parseToolCallJson } from './toolParser.js';
 import { listTokens, markInvalid, markRateLimited, markValid } from './tokenManager.js';
-import { FORGETMEAI_WATERMARK } from '../utils/branding.js';
+
 import {
     canonicalizeConversationKey,
     createClientScope,
@@ -495,6 +495,9 @@ function stringifyOpenAIContent(content) {
 
 function buildStatelessTranscript(messages) {
     const parts = [];
+    const toolCallNameById = new Map();
+    let hasToolState = false;
+
     for (const msg of messages || []) {
         if (!msg || msg.role === 'system') continue;
         if (msg.role === 'user') {
@@ -503,14 +506,27 @@ function buildStatelessTranscript(messages) {
             const text = stringifyOpenAIContent(msg.content);
             if (text) parts.push(`Assistant: ${text}`);
             if (Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
-                parts.push(`Assistant tool calls: ${JSON.stringify(msg.tool_calls)}`);
+                for (const tc of msg.tool_calls) {
+                    const fn = tc?.function || {};
+                    const fnName = fn.name || 'tool';
+                    if (tc.id) toolCallNameById.set(tc.id, fnName);
+                    const args = typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments || {});
+                    parts.push(`Assistant called tool ${fnName} with arguments: ${args}`);
+                }
+                hasToolState = true;
             }
-        } else if (msg.role === 'tool') {
-            const name = msg.name || msg.tool_call_id || 'tool';
-            parts.push(`Tool result (${name}): ${stringifyOpenAIContent(msg.content)}`);
+        } else if (msg.role === 'tool' || msg.role === 'function') {
+            const callId = msg.tool_call_id || msg.name || 'tool';
+            const fnName = toolCallNameById.get(callId) || callId;
+            parts.push(`Tool result (${fnName}): ${stringifyOpenAIContent(msg.content)}`);
+            hasToolState = true;
         } else {
             parts.push(`${msg.role || 'message'}: ${stringifyOpenAIContent(msg.content)}`);
         }
+    }
+
+    if (hasToolState) {
+        parts.push('CONTINUE: If another tool call is needed, respond ONLY with a JSON tool block {"tool_calls":[...]}. Otherwise give the final answer.');
     }
     return parts.join('\n\n');
 }
@@ -626,7 +642,9 @@ function toolsToPrompt(tools) {
     const priorityNames = new Set([
         'skill_view', 'skills_list', 'skill_manage',
         'read_file', 'search_files', 'write_file', 'patch', 'terminal', 'process',
-        'web_search', 'web_extract', 'session_search', 'todo', 'clarify', 'delegate_task'
+        'web_search', 'web_extract', 'session_search', 'todo', 'clarify', 'delegate_task',
+        'code_comment', 'file_read', 'file_read_diff', 'file_write', 'file_edit',
+        'run_tests', 'search_code'
     ]);
 
     const toolPromptMode = (process.env.QWEN_TOOL_PROMPT_MODE || 'compact').toLowerCase();
@@ -1278,7 +1296,7 @@ router.get('/health', async (req, res) => {
         res.json({
             ok: availableAccounts > 0,
             service: 'FreeQwenApi',
-            watermark: FORGETMEAI_WATERMARK,
+            watermark: false,
             baseUrl: '/api',
             models: modelData.models.length,
             accounts: {
@@ -1334,7 +1352,7 @@ router.get('/status', async (req, res) => {
 
             const testResult = await testToken(t.token);
             if (testResult === 'OK') { accInfo.status = 'OK'; if (t.invalid || t.resetAt) markValid(t.id); }
-            else if (testResult === 'RATELIMIT') { accInfo.status = 'WAIT'; markRateLimited(t.id, 24); }
+            else if (testResult === 'RATELIMIT') { accInfo.status = 'WAIT'; markRateLimited(t.id, 1); }
             else if (testResult === 'UNAUTHORIZED') { accInfo.status = 'INVALID'; if (!t.invalid) markInvalid(t.id); }
             else { accInfo.status = 'ERROR'; }
             return accInfo;
@@ -1391,6 +1409,15 @@ router.post('/chat/completions', async (req, res) => {
         const conversationScope = conversationHint ? `conversation:${conversationHint}` : null;
         const forceNewChat = shouldForceNewChat(req);
         logInfo(`Получен OpenAI-совместимый запрос${stream ? ' (stream)' : ''}`);
+        if (tools && tools.length > 0) {
+            logInfo(`Tools: ${tools.length} шт, tool_choice: ${tool_choice || 'not set'}`);
+            logInfo(`Full request body keys: ${Object.keys(req.body).join(', ')}`);
+            if (req.body.tool_choice !== undefined) {
+                logInfo(`tool_choice value: ${JSON.stringify(req.body.tool_choice)}`);
+            } else {
+                logInfo(`tool_choice: UNDEFINED (not sent by client)`);
+            }
+        }
 
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
             logError('Запрос без сообщений');
@@ -1579,6 +1606,35 @@ router.post('/chat/completions', async (req, res) => {
                         writeToolCallsSse(res, mappedModel, result, toolCalls, wantsOpenAIStreamUsage(req.body));
                         return;
                     }
+                    // Эмуляция tool-use для streaming: retry с nudge, если первый парсинг не дал tool_calls.
+                    const toolNames = (combinedTools || []).map(t => t?.function?.name || t?.name).filter(Boolean).join(', ');
+                    const nudge = (toolAwareSystemMessage || systemMessage || '')
+                        + '\n\nCRITICAL: Respond with ONE JSON tool call and NOTHING else. '
+                        + `Available tools: [${toolNames}]. `
+                        + 'Format: {"tool_calls":[{"name":"<tool_name>","arguments":{...}}]}. Do NOT write prose or markdown.';
+                    let rt = 0;
+                    while (rt < 2) {
+                        rt++;
+                        logInfo(`[stream] tool_calls не распарсились, повтор с nudge (попытка ${rt}/2)`);
+                        const retry = await sendMessage(
+                            messageContent, mappedModel, qwenChatId, effectiveParentId, files,
+                            qwenTools, tool_choice, nudge, 't2t', null, true, 0, null,
+                            preparedInput.resetMessageContent, getSessionKey(req)
+                        );
+                        if (retry?.error) break;
+                        const tc = parseToolCallJson(retry?.choices?.[0]?.message?.content);
+                        if (tc && tc.length > 0) {
+                            writeToolCallsSse(res, mappedModel, retry, tc, wantsOpenAIStreamUsage(req.body));
+                            return;
+                        }
+                    }
+                }
+
+                if (result?.choices?.[0]?.message?.content) {
+                    const content = result.choices[0].message.content;
+                    logInfo(`Response content (first 500 chars): ${content.substring(0, 500)}`);
+                    const toolCalls = parseToolCallJson(content);
+                    logInfo(`Parsed tool calls: ${toolCalls ? toolCalls.length : 0}`);
                 }
 
                 if (result.error) {
@@ -1645,7 +1701,7 @@ router.post('/chat/completions', async (req, res) => {
             }
         } else {
             const qwenChatId = await resolveQwenChatId(effectiveChatId);
-            const result = await sendMessage(
+            let result = await sendMessage(
                 messageContent,
                 mappedModel,
                 qwenChatId,
@@ -1675,7 +1731,51 @@ router.post('/chat/completions', async (req, res) => {
                 return sendApiResultError(res, result, { openAI: true });
             }
 
-            const toolCalls = parseToolCallJson(result?.choices?.[0]?.message?.content);
+            // Эмуляция tool-use: парсим JSON tool calls из текста ответа.
+            let toolCalls = parseToolCallJson(result?.choices?.[0]?.message?.content);
+
+            // Нативные OpenAI tool_calls (если вернёт) — конвертируем в наш формат.
+            if ((!toolCalls || toolCalls.length === 0) && Array.isArray(result?.choices?.[0]?.message?.tool_calls)) {
+                toolCalls = result.choices[0].message.tool_calls
+                    .map(tc => ({
+                        id: tc.id || ('call_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24)),
+                        type: 'function',
+                        function: {
+                            name: tc.function?.name,
+                            arguments: typeof tc.function?.arguments === 'string'
+                                ? tc.function.arguments
+                                : JSON.stringify(tc.function?.arguments || {})
+                        }
+                    }))
+                    .filter(tc => tc.function?.name);
+            }
+
+            // Эмуляция tool-use нестабильна: модель может вернуть прозу вместо JSON.
+            // Retry с nudge устраняет "No tool calls parsed" на стороне клиента.
+            if (tools && tools.length > 0 && (!toolCalls || toolCalls.length === 0)) {
+                const toolNames = tools.map(t => t?.function?.name || t?.name).filter(Boolean).join(', ');
+                const nudge = (toolAwareSystemMessage || systemMessage || '')
+                    + '\n\nCRITICAL: Respond with ONE JSON tool call and NOTHING else. '
+                    + `Available tools: [${toolNames}]. `
+                    + 'Use exactly this format and do not write any prose or markdown outside it: '
+                    + '{"tool_calls":[{"name":"<tool_name>","arguments":{...}}]}. '
+                    + 'If you have nothing to report, still emit a tool call for one of the available tools '
+                    + '(for example a task_done/no-op tool with empty arguments).';
+                let attempts = 0;
+                while (attempts < 2 && (!toolCalls || toolCalls.length === 0)) {
+                    attempts++;
+                    logInfo(`tool_calls не распарсились, повтор запроса с nudge (попытка ${attempts}/2)`);
+                    const retry = await sendMessage(
+                        messageContent, mappedModel, qwenChatId, effectiveParentId, files,
+                        qwenTools, tool_choice, nudge, 't2t', null, true, 0, null,
+                        preparedInput.resetMessageContent, getSessionKey(req)
+                    );
+                    if (retry?.error) break;
+                    const tc = parseToolCallJson(retry?.choices?.[0]?.message?.content);
+                    if (tc && tc.length > 0) { result = retry; toolCalls = tc; }
+                }
+            }
+
             if (toolCalls && toolCalls.length > 0) {
                 return res.json(buildOpenAIToolResponse(result, mappedModel, toolCalls));
             }
@@ -1927,6 +2027,28 @@ router.post('/v1/chat/completions', async (req, res) => {
                     if (toolCalls && toolCalls.length > 0) {
                         writeToolCallsSse(res, mappedModel, result, toolCalls, wantsOpenAIStreamUsage(req.body));
                         return;
+                    }
+                    // Эмуляция tool-use для streaming: retry с nudge, если первый парсинг не дал tool_calls.
+                    const toolNames = (combinedTools || []).map(t => t?.function?.name || t?.name).filter(Boolean).join(', ');
+                    const nudge = (toolAwareSystemMessage || systemMessage || '')
+                        + '\n\nCRITICAL: Respond with ONE JSON tool call and NOTHING else. '
+                        + `Available tools: [${toolNames}]. `
+                        + 'Format: {"tool_calls":[{"name":"<tool_name>","arguments":{...}}]}. Do NOT write prose or markdown.';
+                    let rt = 0;
+                    while (rt < 2) {
+                        rt++;
+                        logInfo(`[stream] tool_calls не распарсились, повтор с nudge (попытка ${rt}/2)`);
+                        const retry = await sendMessage(
+                            messageContent, mappedModel, qwenChatId, effectiveParentId, files,
+                            qwenTools, tool_choice, nudge, 't2t', null, true, 0, null,
+                            preparedInput.resetMessageContent, getSessionKey(req)
+                        );
+                        if (retry?.error) break;
+                        const tc = parseToolCallJson(retry?.choices?.[0]?.message?.content);
+                        if (tc && tc.length > 0) {
+                            writeToolCallsSse(res, mappedModel, retry, tc, wantsOpenAIStreamUsage(req.body));
+                            return;
+                        }
                     }
                 }
 
@@ -2229,7 +2351,7 @@ function normalizeDashScopeSize(size) {
 function buildOpenAiImageResponse({ imageUrl, prompt, model, raw, provider = 'qwen-chat' }) {
     return {
         created: Math.floor(Date.now() / 1000),
-        watermark: FORGETMEAI_WATERMARK,
+        watermark: false,
         provider,
         model,
         data: [{ url: imageUrl, revised_prompt: prompt }],
@@ -2243,7 +2365,7 @@ function buildVideoResponse({ result, prompt, model, waitForCompletion }) {
         id: result.id || result.task_id || `video-${Date.now()}`,
         object: videoUrl ? 'video.generation' : 'video.generation.task',
         created: Math.floor(Date.now() / 1000),
-        watermark: FORGETMEAI_WATERMARK,
+        watermark: false,
         provider: 'qwen-chat',
         model,
         prompt,
@@ -2407,7 +2529,7 @@ router.get('/tasks/status/:taskId', async (req, res) => {
         if (result.error && !result.data) {
             return sendApiResultError(res, result);
         }
-        return res.json({ watermark: FORGETMEAI_WATERMARK, ...result });
+        return res.json({ watermark: false, ...result });
     } catch (error) {
         logError('Ошибка при проверке статуса задачи', error);
         res.status(500).json({ error: 'Внутренняя ошибка сервера', message: error.message });
@@ -2422,7 +2544,7 @@ router.get('/images/models', async (req, res) => {
         const dashScopeModels = getAvailableImageModels();
         res.json({
             object: 'list',
-            watermark: FORGETMEAI_WATERMARK,
+            watermark: false,
             data: [
                 {
                     id: CHAT_MEDIA_MODEL,
@@ -2456,7 +2578,7 @@ router.get('/images/models', async (req, res) => {
 router.get('/videos/models', async (req, res) => {
     res.json({
         object: 'list',
-        watermark: FORGETMEAI_WATERMARK,
+        watermark: false,
         data: [{
             id: CHAT_MEDIA_MODEL,
             object: 'model',
@@ -2481,7 +2603,7 @@ router.get('/images/status', async (req, res) => {
         const qwenChatAvailable = tokens.some(t => (!t.resetAt || new Date(t.resetAt).getTime() <= now) && !t.invalid);
 
         res.json({
-            watermark: FORGETMEAI_WATERMARK,
+            watermark: false,
             qwenChat: {
                 available: qwenChatAvailable,
                 model: CHAT_MEDIA_MODEL,
@@ -2511,12 +2633,156 @@ router.get('/videos/status', async (req, res) => {
     const now = Date.now();
     const availableAccounts = tokens.filter(t => (!t.resetAt || new Date(t.resetAt).getTime() <= now) && !t.invalid).length;
     res.json({
-        watermark: FORGETMEAI_WATERMARK,
+        watermark: false,
         available: availableAccounts > 0,
         model: CHAT_MEDIA_MODEL,
         accounts: { total: tokens.length, available: availableAccounts },
         message: availableAccounts > 0 ? 'Qwen Chat генерация видео доступна' : 'Нет активных аккаунтов Qwen Chat'
     });
+});
+
+function responsesExtractText(content) {
+    if (!content) return '';
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+        return content.map(c => {
+            if (typeof c === 'string') return c;
+            if (c && (c.type === 'input_text' || c.type === 'output_text' || c.type === 'text')) return c.text || '';
+            if (c && c.text) return c.text;
+            return '';
+        }).join('\n');
+    }
+    return '';
+}
+
+function responsesInputToPrompt(input, instructions) {
+    let systemText = instructions || '';
+    const parts = [];
+    const items = typeof input === 'string'
+        ? [{ role: 'user', content: input }]
+        : Array.isArray(input) ? input : [];
+    for (const it of items) {
+        if (!it) continue;
+        if (typeof it === 'string') { parts.push(`User: ${it}`); continue; }
+        const t = it.type;
+        if (t === 'message' || it.role) {
+            const role = it.role || (t === 'message' ? 'user' : 'user');
+            const label = String(role).charAt(0).toUpperCase() + String(role).slice(1);
+            parts.push(`${label}: ${responsesExtractText(it.content)}`);
+        } else if (t === 'function_call') {
+            parts.push(`Assistant previously called tool "${it.name}" with arguments: ${it.arguments}`);
+        } else if (t === 'function_call_output') {
+            const name = it.name || it.call_id || 'tool';
+            parts.push(`Tool "${name}" returned: ${it.output}`);
+        }
+    }
+    return { systemText, userText: parts.join('\n\n') };
+}
+
+router.get('/v1/models', async (req, res) => {
+    try {
+        const models = (await getAllModels()) || [];
+        const data = models.map(m => ({
+            id: typeof m === 'string' ? m : (m.id || m.name || DEFAULT_MODEL),
+            object: 'model',
+            created: 0,
+            owned_by: 'qwen'
+        }));
+        res.json({ object: 'list', data });
+    } catch (e) {
+        res.json({ object: 'list', data: [{ id: DEFAULT_MODEL, object: 'model', created: 0, owned_by: 'qwen' }] });
+    }
+});
+
+router.get('/models/:model', (req, res) => {
+    res.json({ id: req.params.model, object: 'model', created: 0, owned_by: 'qwen' });
+});
+
+router.post('/show', (req, res) => res.status(200).json({}));
+router.post('/api/show', (req, res) => res.status(200).json({}));
+
+router.post('/responses', async (req, res) => {
+    try {
+        const body = req.body || {};
+        const { model, input, instructions, tools, tool_choice, stream } = body;
+        const mappedModel = getMappedModel(model) || model || DEFAULT_MODEL;
+
+        const { systemText, userText } = responsesInputToPrompt(input, instructions);
+
+        const qwenTools = Array.isArray(tools)
+            ? tools.filter(t => t && (t.type === 'function' || t.function)).map(t => (t.function ? t : { type: 'function', function: t }))
+            : [];
+
+        let toolChoice = 'auto';
+        if (tool_choice === 'required' || tool_choice === 'none') toolChoice = tool_choice;
+        else if (tool_choice && typeof tool_choice === 'object' && tool_choice.function && tool_choice.function.name)
+            toolChoice = { type: 'function', function: { name: tool_choice.function.name } };
+
+        const sessionKey = getSessionKey(req);
+        const result = await sendMessage(
+            userText, mappedModel, null, null, null,
+            qwenTools.length ? qwenTools : undefined,
+            toolChoice, systemText, 't2t', null, true, 0, null, null, sessionKey
+        );
+
+        if (result && result.error) {
+            const status = result.antiBot ? 429 : 500;
+            return res.status(status).json({ error: result.error, antiBot: !!result.antiBot });
+        }
+
+        const content = (result && result.choices && result.choices[0] && result.choices[0].message && result.choices[0].message.content) || '';
+        const toolCalls = parseToolCallJson(content);
+
+        let output = [];
+        if (toolCalls && toolCalls.length) {
+            output = toolCalls.map((tc) => ({
+                type: 'function_call',
+                call_id: (tc.id && String(tc.id)) || ('call_' + crypto.randomUUID().replace(/-/g, '').slice(0, 24)),
+                name: tc.function && tc.function.name,
+                arguments: typeof (tc.function && tc.function.arguments) === 'string'
+                    ? tc.function.arguments
+                    : JSON.stringify((tc.function && tc.function.arguments) || {}),
+                status: 'completed'
+            }));
+        } else {
+            output = [{
+                type: 'message',
+                role: 'assistant',
+                status: 'completed',
+                content: [{ type: 'output_text', text: content }]
+            }];
+        }
+
+        const responseObj = {
+            id: 'resp_' + crypto.randomUUID().replace(/-/g, ''),
+            object: 'response',
+            created_at: Math.floor(Date.now() / 1000),
+            model: mappedModel,
+            status: 'completed',
+            output,
+            usage: (result && result.usage) || { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+            tool_choice: tool_choice || 'auto'
+        };
+
+        if (stream) {
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            const send = (o) => res.write(`event: ${o.type}\ndata: ${JSON.stringify(o)}\n\n`);
+            send({ type: 'response.created', response: { ...responseObj, status: 'in_progress', output: [] } });
+            output.forEach((item, idx) => {
+                send({ type: 'response.output_item.added', output_index: idx, item });
+                send({ type: 'response.output_item.done', output_index: idx, item });
+            });
+            send({ type: 'response.completed', response: responseObj });
+            return res.end();
+        }
+
+        return res.status(200).json(responseObj);
+    } catch (err) {
+        logError(`/responses error: ${err && err.message}`);
+        return res.status(500).json({ error: 'responses_failed', detail: err && err.message });
+    }
 });
 
 export default router;

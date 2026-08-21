@@ -1,7 +1,7 @@
 import { getBrowserContext, getAuthenticationStatus, setAuthenticationStatus, getPageFromContext, isBrowserVisibleMode } from '../browser/browser.js';
 import { checkAuthentication, checkVerification } from '../browser/auth.js';
 import { shutdownBrowser, initBrowser } from '../browser/browser.js';
-import { saveAuthToken, saveSession } from '../browser/session.js';
+import { saveAuthToken, loadAuthToken, saveSession } from '../browser/session.js';
 import { extractPunishUrl, solveX5secChallenge } from '../browser/x5secSolver.js';
 import {
     getAvailableToken,
@@ -10,6 +10,7 @@ import {
     markInvalidByToken,
     markRateLimitedByToken
 } from './tokenManager.js';
+import { adaptiveTimer } from './adaptiveTiming.js';
 import {
     createAccountAffinityRegistry,
     resolveChatRequestContext,
@@ -26,7 +27,7 @@ import {
     DEFAULT_MODEL, MAX_RETRY_COUNT,
     TASK_POLL_MAX_ATTEMPTS, TASK_POLL_INTERVAL,
     ANTI_BOT_COOLDOWN_MS,
-    GLOBAL_REQUEST_CONCURRENCY,
+    ACCOUNT_CONCURRENCY,
     REQUEST_JITTER_MIN_MS, REQUEST_JITTER_MAX_MS,
     SESSION_DIR, ACCOUNTS_DIR, USER_AGENT
 } from '../config.js';
@@ -42,6 +43,11 @@ let availableModels = null;
 let authKeys = null;
 let browserTokenCooldown = null;
 let globalAntiBotCooldownUntil = 0;
+// Глобальный mutex для солвера капчи: при punish-шторме (десятки параллельных
+// 429 от клиента) только ОДИН запрос решает слайдер, остальные ждут его результат.
+// Без этого N запросов одновременно дёргают одну страницу и вешают друг друга
+// (клиент видит context deadline exceeded).
+let wafSolveInProgress = null;
 const resourceAccountAffinity = createAccountAffinityRegistry();
 const chatAccountAffinity = Object.freeze({
     get: chatId => resourceAccountAffinity.get(buildAffinityKey('chat', chatId)),
@@ -50,32 +56,57 @@ const chatAccountAffinity = Object.freeze({
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ─── Глобальный троттлинг запросов к Qwen ─────────────────────────────────────
-// Qwen anti-bot (punish) срабатывает на пакетный паттерн одновременных запросов.
-// Ограничиваем число одновременных обращений к API и разносим их джиттером.
-let activeQwenRequests = 0;
-const qwenRequestWaiters = [];
+// Throttle per account, not globally: managed accounts run independent Node-fetch
+// calls per token, so concurrent DIFFERENT accounts are safe and let OCR scale to
+// N parallel streams. ACCOUNT_CONCURRENCY (default 1) stays per-account to avoid
+// Qwen anti-bot burst detection on a single account.
+const accountActive = new Map();
+const accountWaiters = new Map();
 
-function acquireQwenSlot() {
-    return new Promise(resolve => {
-        if (activeQwenRequests < GLOBAL_REQUEST_CONCURRENCY) {
-            activeQwenRequests++;
-            resolve();
-        } else {
-            qwenRequestWaiters.push(() => {
-                activeQwenRequests++;
-                resolve();
-            });
-        }
+function getAccountActive(key) { return accountActive.get(key) || 0; }
+function incAccount(key) { accountActive.set(key, getAccountActive(key) + 1); }
+function decAccount(key) {
+    const n = getAccountActive(key) - 1;
+    if (n <= 0) accountActive.delete(key);
+    else accountActive.set(key, n);
+}
+
+const QWEN_SLOT_WAIT_MS = Number(process.env.QWEN_SLOT_WAIT_MS) || 45_000;
+
+async function waitForQwenSlot(accountKey) {
+    const key = accountKey || 'browser';
+    if (getAccountActive(key) < ACCOUNT_CONCURRENCY) {
+        incAccount(key);
+        return { ok: true, accountKey: key };
+    }
+    if (!accountWaiters.has(key)) accountWaiters.set(key, []);
+    return await new Promise(resolve => {
+        let settled = false;
+        const waiter = (result) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(result || { ok: true, accountKey: key });
+        };
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            const idx = accountWaiters.get(key)?.indexOf(waiter) ?? -1;
+            if (idx >= 0) accountWaiters.get(key).splice(idx, 1);
+            resolve({ ok: false, timeout: true, accountKey: key });
+        }, QWEN_SLOT_WAIT_MS);
+        accountWaiters.get(key).push(waiter);
     });
 }
 
-function releaseQwenSlot() {
-    const next = qwenRequestWaiters.shift();
-    if (next) {
-        next();
+function releaseAccountSlot(accountKey) {
+    const key = accountKey || 'browser';
+    const waiters = accountWaiters.get(key);
+    if (waiters && waiters.length) {
+        const next = waiters.shift();
+        next({ ok: true, accountKey: key });
     } else {
-        activeQwenRequests--;
+        decAccount(key);
     }
 }
 
@@ -228,6 +259,44 @@ function loadAccountCookiesForToken(tokenValue) {
     return null;
 }
 
+
+// ─── Daily limit detection ────────────────────────────────────────────────────
+// Qwen возвращает дневной лимит как обычный текст в content (HTTP 200),
+// а не как HTTP 429. Детектим по ключевым словам и помечаем аккаунт на 10ч1мин.
+const DAILY_LIMIT_HOURS = 10 + 1 / 60; // 10ч + 1мин запаса
+const DAILY_LIMIT_PATTERN = /дне?вн(ой|ого|о)? лимит|daily limit|10 hours|10 часов/i;
+
+function isDailyLimitResponse(text) {
+    return DAILY_LIMIT_PATTERN.test(text || '');
+}
+
+async function handleDailyLimitResponse(tokenObj, chatId, retryCount) {
+    const hours = DAILY_LIMIT_HOURS;
+    markRateLimitedByToken(tokenObj?.token, hours);
+    if (isBrowserAccountId(tokenObj?.id) || browserAuthToken === tokenObj?.token) {
+        markBrowserTokenRateLimited(tokenObj?.token, hours);
+    }
+    chatAccountAffinity.forget(chatId);
+    logWarn(
+        `[DAILY LIMIT] Аккаунт ${tokenObj?.id}: дневной лимит — ` +
+        `помечен на ${hours}ч (10ч 1мин). Переключение на другой аккаунт...`
+    );
+    // Возвращаем 429 с закодированным количеством часов: handleApiError
+    // сам разберётся с retry / переключением на другой аккаунт (lines 1492+).
+    return handleApiError({
+        success: false,
+        status: 429,
+        error: `Аккаунт ${tokenObj?.id}: дневной лимит. Переключение на другой аккаунт...`,
+        errorBody: JSON.stringify({ num: hours, reason: 'daily_limit' }),
+    }, tokenObj, {
+        chatId,
+        retryCount,
+        fileAccountId: null,
+        browserContext: getBrowserContext(),
+    });
+}
+
+
 // ─── Page helpers ────────────────────────────────────────────────────────────
 
 async function getPage(context) {
@@ -355,9 +424,15 @@ export async function pollTaskStatus(taskId, page, token, maxAttempts = TASK_POL
                         }
                     });
                     if (!response.ok) {
-                        return { success: false, status: response.status, error: await response.text() };
+                        return { success: false, status: response.status, error: await Promise.race([
+                            response.text(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('browser body timeout (60s)')), 60_000))
+                        ]) };
                     }
-                    return { success: true, data: await response.json() };
+                    return { success: true, data: await Promise.race([
+                        response.json(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('browser json timeout (60s)')), 60_000))
+                    ]) };
                 } catch (e) {
                     return { success: false, error: e.toString() };
                 }
@@ -433,6 +508,12 @@ export async function extractAuthToken(context, forceRefresh = false) {
                 return browserAuthToken;
             }
             logError('Токен авторизации не найден в браузере');
+            const savedToken = loadAuthToken();
+            if (savedToken) {
+                browserAuthToken = savedToken;
+                logInfo('Использован токен из файла (fallback)');
+                return browserAuthToken;
+            }
             return null;
         } catch (error) {
             if (shouldClosePage) await page.close().catch(() => {});
@@ -761,7 +842,8 @@ function buildPayloadV2(messageContent, model, chatId, parentId, files, systemMe
     }
     if (tools && Array.isArray(tools) && tools.length > 0) {
         payload.tools = tools;
-        payload.tool_choice = toolChoice || 'auto';
+        payload.tool_choice = toolChoice || 'required';
+        logInfo(`Tool calling: tools=${tools.length}, tool_choice=${payload.tool_choice}`);
     }
 
     return payload;
@@ -824,14 +906,44 @@ async function executeApiRequestWithNodeStreaming(apiUrl, payload, token, onChun
         if (accountCookies) requestHeaders.Cookie = accountCookies;
         requestHeaders['User-Agent'] = USER_AGENT;
 
-        const response = await fetch(requestUrl, {
-            method: 'POST',
-            headers: requestHeaders,
-            body: JSON.stringify(payload)
-        });
+        // Таймаут 45с: без него зависший запрос к Qwen висит вечно и держит
+        // слот-очередь, блокируя все последующие запросы. При таймауте
+        // возвращаем ошибку БЕЗ status/errorBody, чтобы
+        // shouldReturnNodeStreamingResponse вернул false и произошёл fallback
+        // к browser fetch (там свой 60с AbortController + anti-bot-обработка).
+        const controller = new AbortController();
+        const fetchTimeoutId = setTimeout(() => controller.abort(), 45_000);
+        let response;
+        try {
+            response = await fetch(requestUrl, {
+                method: 'POST',
+                headers: requestHeaders,
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+        } catch (error) {
+            clearTimeout(fetchTimeoutId);
+            if (controller.signal.aborted) {
+                logWarn('Node fetch timeout (45s) — fallback к browser fetch');
+                return { success: false, timeout: true, error: 'Node fetch timeout (45s)' };
+            }
+            return { success: false, error: error.toString() };
+        }
+        clearTimeout(fetchTimeoutId);
 
         if (!response.ok) {
-            const errorBody = await response.text();
+            let errorBody = '';
+            try {
+                errorBody = await Promise.race([
+                    response.text(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Node fetch body timeout (45s)')), 45_000))
+                ]);
+            } catch (bodyError) {
+                // Qwen иногда отдаёт статус, но тело не приходит: без таймаута
+                // text() висит вечно и держит слот-очередь.
+                logWarn(`Node fetch: тело ответа не пришло за 45с (status=${response.status}). Возвращаем ошибку с сохранением статуса.`);
+                return { success: false, status: response.status, statusText: response.statusText, error: 'Node fetch body timeout (45s)', errorBody: '' };
+            }
             return {
                 success: false,
                 status: response.status,
@@ -842,7 +954,10 @@ async function executeApiRequestWithNodeStreaming(apiUrl, payload, token, onChun
         }
 
         if (payload.stream === false) {
-            const jsonResponse = await response.json();
+            const jsonResponse = await Promise.race([
+                response.json(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Node fetch json timeout (45s)')), 45_000))
+            ]);
             const body = JSON.stringify(jsonResponse);
             // Punish-ответ Qwen приходит как JSON c ret-массивом
             // (FAIL_SYS_USER_VALIDATE / RGV587) без code/error — не должен
@@ -859,13 +974,19 @@ async function executeApiRequestWithNodeStreaming(apiUrl, payload, token, onChun
 
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('text/event-stream')) {
-            const body = await response.text();
+            const body = await Promise.race([
+                response.text(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Node fetch body timeout (45s)')), 45_000))
+            ]);
             return parseNonSseCompletionBody(body);
         }
 
         const reader = response.body?.getReader?.();
         if (!reader) {
-            const body = await response.text();
+            const body = await Promise.race([
+                response.text(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Node fetch body timeout (45s)')), 45_000))
+            ]);
             return parseNonSseCompletionBody(body);
         }
 
@@ -962,6 +1083,10 @@ export function shouldReturnNodeStreamingResponse(streamedResponse, preferNodeFe
     // anti-bot челлендж (x5sec): не падаем в browser fetch (там он виснет),
     // а отдаём в handleApiError → автоматическое решение слайдера + повтор.
     if (streamedResponse?.antiBot) return true;
+    // Node fetch timeout: НЕ падаем в browser fetch (там капча блокирует main
+    // thread и локальный 60с AbortController не срабатывает — висит 600с).
+    // Возвращаем ошибку клиенту, слот освобождается через finally.
+    if (streamedResponse?.timeout === true) return true;
     return Boolean(
         streamedResponse?.success ||
         streamedResponse?.status ||
@@ -970,13 +1095,25 @@ export function shouldReturnNodeStreamingResponse(streamedResponse, preferNodeFe
 }
 
 async function executeApiRequest(page, apiUrl, payload, token, onChunk = null, credentials = 'omit', options = {}) {
-    await acquireQwenSlot();
+    const accountKey = token || 'browser';
+    const slot = await waitForQwenSlot(accountKey);
+    if (!slot.ok) {
+        logWarn('Очередь запросов к Qwen переполнена — возвращаем 429 с Retry-After вместо ожидания');
+        return {
+            success: false,
+            status: 429,
+            queueOverflow: true,
+            error: 'Qwen anti-bot (punish): очередь запросов переполнена. Повторите позже.',
+            retryAfterSeconds: Math.ceil(QWEN_SLOT_WAIT_MS / 1000)
+        };
+    }
     try {
-        const jitter = REQUEST_JITTER_MIN_MS + Math.random() * Math.max(0, REQUEST_JITTER_MAX_MS - REQUEST_JITTER_MIN_MS);
-        if (jitter > 0) await delay(jitter);
+        // Adaptive timing: умный jitter на основе истории запросов
+        const adaptiveDelay = await adaptiveTimer.getNextDelay();
+        if (adaptiveDelay > 0) await delay(adaptiveDelay);
         return await executeApiRequestUnthrottled(page, apiUrl, payload, token, onChunk, credentials, options);
     } finally {
-        releaseQwenSlot();
+        releaseAccountSlot(accountKey);
     }
 }
 
@@ -986,8 +1123,11 @@ async function executeApiRequestUnthrottled(page, apiUrl, payload, token, onChun
         : (String(process.env.QWEN_USE_NODE_FETCH || '').toLowerCase() === '1' || String(process.env.QWEN_USE_NODE_FETCH || '').toLowerCase() === 'true');
     // Node fetch применим и для stream===false (когда есть токен): там тоже нужен
     // punish-детект, а браузерная ветка при punish зависает на капче до таймаута.
+    // ВАЖНО: buildPayloadV2 для t2t всегда ставит payload.stream=true, поэтому
+    // опираемся на onChunk===null (клиент не просил стриминг) — иначе запрос
+    // уходит в браузерный page.evaluate и виснет до CDP-таймаута (600с).
     const nodeFetchEligible = !options.forceBrowserFetch &&
-        ((payload?.stream !== false && (typeof onChunk === 'function' || preferNodeFetch)) ||
+        ((payload?.stream !== false && (typeof onChunk === 'function' || preferNodeFetch || onChunk === null)) ||
         (payload?.stream === false && Boolean(token)));
     if (nodeFetchEligible) {
         const streamedResponse = await executeApiRequestWithNodeStreaming(apiUrl, payload, token, onChunk);
@@ -1028,7 +1168,10 @@ async function executeApiRequestUnthrottled(page, apiUrl, payload, token, onChun
 
             if (response.ok) {
                 if (data.payload.stream === false) {
-                    const jsonResponse = await response.json();
+                    const jsonResponse = await Promise.race([
+                        response.json(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('browser json timeout (60s)')), 60_000))
+                    ]);
                     const body = JSON.stringify(jsonResponse);
                     // Punish-ответ Qwen (ret-массив: FAIL_SYS_USER_VALIDATE / RGV587)
                     // приходит без code/error — детект обязателен, иначе пройдёт как успех.
@@ -1046,7 +1189,10 @@ async function executeApiRequestUnthrottled(page, apiUrl, payload, token, onChun
                 const contentType = response.headers.get('content-type') || '';
 
                 if (!contentType.includes('text/event-stream')) {
-                    const body = await response.text();
+                    const body = await Promise.race([
+                        response.text(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('browser body timeout (60s)')), 60_000))
+                    ]);
                     try {
                         const parsed = JSON.parse(body);
                         const topLevelCode = parsed?.code;
@@ -1143,7 +1289,10 @@ async function executeApiRequestUnthrottled(page, apiUrl, payload, token, onChun
                 };
             }
 
-            const errorBody = await response.text();
+            const errorBody = await Promise.race([
+                response.text(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('browser fetch body timeout (60s)')), 60_000))
+            ]);
             return { success: false, status: response.status, statusText: response.statusText, errorBody };
         } catch (error) {
             if (error?.name === 'AbortError') {
@@ -1241,6 +1390,9 @@ export async function retryAfterChallengeSolve(requestContext, sendMessageFn, ac
     const args = buildAccountSwitchRetryArgs({ ...requestContext, forceBrowserFetch });
     args[2] = requestContext.chatId ?? null;
     args[3] = requestContext.parentId ?? null;
+    // Человеческая пауза перед ретраем: мгновенный повтор (2-5с) после солва x5sec
+    // воспринимается Qwen как бот-поведение и провоцирует повторный punish/429.
+    await delay(RETRY_DELAY * 2);
     return sendMessageFn(...args);
 }
 
@@ -1254,34 +1406,35 @@ function isWafRetryHang(response = {}, requestContext = {}) {
 }
 
 async function solveWafChallenge(browserContext, punishUrl, accountId = null) {
-    if (isBrowserVisibleMode()) {
-        logWarn('x5sec: видимый режим — не создаём вкладку для решения, авто-солв пропущен');
-        return false;
-    }
-    let solvePage = null;
-    try {
-        solvePage = await getPageFromContext(browserContext);
-        const solved = await solveX5secChallenge(solvePage, punishUrl);
-        if (solved && accountId) {
-            try {
-                // accountId приходит как managed:acc_... (префикс для node-fetch ветки),
-                // но каталог с token.txt и cookies.json называется по raw id (acc_...).
-                // loadAccountCookiesForToken ищет каталог по token.txt, поэтому писать
-                // нужно в raw-каталог, иначе свежий x5sec не подхватится.
-                const storedId = getStoredManagedAccountId(accountId) || accountId;
-                const saved = await saveSession(solvePage, storedId);
-                if (saved) logInfo(`x5sec: cookies аккаунта ${storedId} обновлены после солва`);
-            } catch (e) {
-                logWarn(`x5sec: не удалось сохранить cookies после солва: ${e.message?.slice(0, 80)}`);
-            }
+    // Сливаемся с уже идущим решением: все параллельные запросы ждут ОДИН результат.
+    if (wafSolveInProgress) return wafSolveInProgress;
+    wafSolveInProgress = (async () => {
+        if (isBrowserVisibleMode()) {
+            logWarn('x5sec: видимый режим — не создаём вкладку для решения, авто-солв пропущен');
+            return false;
         }
-        return solved;
-    } catch (e) {
-        logWarn(`x5sec: ошибка решения на отдельной вкладке: ${e.message?.slice(0, 100)}`);
-        return false;
-    } finally {
-        if (solvePage) await solvePage.close().catch(() => {});
-    }
+        let solvePage = null;
+        try {
+            solvePage = await getPageFromContext(browserContext);
+            const solved = await solveX5secChallenge(solvePage, punishUrl);
+            if (solved && accountId) {
+                try {
+                    const storedId = getStoredManagedAccountId(accountId) || accountId;
+                    const saved = await saveSession(solvePage, storedId);
+                    if (saved) logInfo(`x5sec: cookies аккаунта ${storedId} обновлены после солва`);
+                } catch (e) {
+                    logWarn(`x5sec: не удалось сохранить cookies после солва: ${e.message?.slice(0, 80)}`);
+                }
+            }
+            return solved;
+        } catch (e) {
+            logWarn(`x5sec: ошибка решения на отдельной вкладке: ${e.message?.slice(0, 100)}`);
+            return false;
+        } finally {
+            if (solvePage) await solvePage.close().catch(() => {});
+        }
+    })().finally(() => { wafSolveInProgress = null; });
+    return wafSolveInProgress;
 }
 
 async function handleApiError(response, tokenObj, requestContext) {
@@ -1298,6 +1451,16 @@ async function handleApiError(response, tokenObj, requestContext) {
         await shutdownBrowser();
         await initBrowser(true);
         return { error: 'Требуется верификация. Браузер запущен в видимом режиме.', verification: true, chatId };
+    }
+
+    if (response.queueOverflow) {
+        logWarn('Переполнение очереди запросов к Qwen — 429 без cooldown (это наш rate limit, не punish Qwen)');
+        return {
+            error: response.error || 'Qwen anti-bot (punish): очередь запросов переполнена. Повторите позже.',
+            status: 429,
+            retryAfterSeconds: response.retryAfterSeconds || Math.ceil(QWEN_SLOT_WAIT_MS / 1000),
+            chatId
+        };
     }
 
     if (response.antiBot) {
@@ -1320,6 +1483,7 @@ async function handleApiError(response, tokenObj, requestContext) {
             error: 'Qwen anti-bot (punish): сервер на паузе. Повторите позже.',
             status: 429,
             antiBot: true,
+            retryAfterSeconds: Math.ceil(ANTI_BOT_COOLDOWN_MS / 1000),
             chatId
         };
     }
@@ -1361,11 +1525,11 @@ async function handleApiError(response, tokenObj, requestContext) {
     }
 
     if (response.status === 429 || (response.errorBody && response.errorBody.includes('RateLimited'))) {
-        let hours = 24;
+        let hours = 1;
         try {
             const rateInfo = JSON.parse(response.errorBody);
             const parsedHours = Number(rateInfo.num);
-            hours = Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : 24;
+            hours = Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : 1;
         } catch { /* errorBody might not be valid JSON */ }
 
         markRateLimitedByToken(tokenObj?.token, hours);
@@ -1439,6 +1603,7 @@ export async function sendMessage(message, model = DEFAULT_MODEL, chatId = null,
             error: `Qwen anti-bot (punish): сервер на паузе ещё ~${waitSec}с. Повторите позже.`,
             status: 429,
             antiBot: true,
+            retryAfterSeconds: waitSec,
             chatId
         };
     }
@@ -1540,6 +1705,37 @@ export async function sendMessage(message, model = DEFAULT_MODEL, chatId = null,
             await page.reload({ waitUntil: 'domcontentloaded', timeout: PAGE_TIMEOUT });
         }
 
+        // HUMAN-LIKE: имитация поведения человека перед запросом
+        // 1. Случайное движение мыши
+        try {
+            const viewport = { width: 800, height: 600 };
+            for (let i = 0; i < 3; i++) {
+                const x = Math.floor(Math.random() * viewport.width);
+                const y = Math.floor(Math.random() * viewport.height);
+                await page.mouse.move(x, y, { steps: 10 + Math.floor(Math.random() * 20) });
+                await delay(100 + Math.floor(Math.random() * 200));
+            }
+        } catch (e) {
+            // Игнорируем ошибки мыши
+        }
+
+        // 2. Случайный скроллинг
+        try {
+            await page.evaluate(() => {
+                window.scrollBy(0, Math.floor(Math.random() * 200) + 50);
+            });
+            await delay(300 + Math.floor(Math.random() * 500));
+            await page.evaluate(() => {
+                window.scrollBy(0, -(Math.floor(Math.random() * 100) + 50));
+            });
+            await delay(200);
+        } catch (e) {
+            // Игнорируем ошибки скролла
+        }
+
+        const humanDelay = Math.floor(Math.random() * 250);
+        await delay(humanDelay);
+
         logInfo('Отправка запроса к API v2...');
 
         const payload = buildPayloadV2(messageContent, model, chatId, parentId, files, systemMessage, tools, toolChoice, chatType, size);
@@ -1556,6 +1752,14 @@ export async function sendMessage(message, model = DEFAULT_MODEL, chatId = null,
             getBrowserFetchCredentials(tokenObj.id),
             { forceBrowserFetch }
         );
+
+        // Дневной лимит: Qwen возвращает текст ошибки в content вместо HTTP 429.
+        // Перехватываем здесь (до pageHang/retry/task-обработки) — покрывает
+        // все пути: node-fetch stream/non-stream, browser stream/non-stream.
+        const receivedText = response?.data?.choices?.[0]?.message?.content || '';
+        if (isDailyLimitResponse(receivedText)) {
+            return handleDailyLimitResponse(tokenObj, chatId, retryCount);
+        }
 
         if (response.pageHang) {
             // Страница зависла (не punish): закрываем её, не возвращая в пул,
@@ -1805,8 +2009,14 @@ export async function createChatV2(model = DEFAULT_MODEL, title = 'Новый ч
                     headers: data.headers,
                     body: JSON.stringify(data.payload)
                 });
-                if (response.ok) return { success: true, data: await response.json() };
-                return { success: false, status: response.status, errorBody: await response.text() };
+                if (response.ok) return { success: true, data: await Promise.race([
+                    response.json(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('browser json timeout (60s)')), 60_000))
+                ]) };
+                return { success: false, status: response.status, errorBody: await Promise.race([
+                    response.text(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('browser body timeout (60s)')), 60_000))
+                ]) };
             } catch (error) {
                 return { success: false, error: error.toString() };
             }
@@ -1839,10 +2049,10 @@ export async function createChatV2(model = DEFAULT_MODEL, title = 'Новый ч
             setAuthenticationStatus(false);
         }
         if (isRateLimited) {
-            let hours = 24;
+            let hours = 1;
             try {
                 const parsedHours = Number(JSON.parse(structuredErrorBody).num);
-                hours = Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : 24;
+                hours = Number.isFinite(parsedHours) && parsedHours > 0 ? parsedHours : 1;
             } catch { /* non-JSON body */ }
             markRateLimitedByToken(tokenObj.token, hours);
             if (isBrowserAccountId(tokenObj.id) || browserAuthToken === tokenObj.token) {

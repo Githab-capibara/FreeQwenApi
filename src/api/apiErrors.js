@@ -25,6 +25,10 @@ export function sendApiResultError(res, result, { openAI = false } = {}) {
     }
     if (!res.headersSent && typeof res.setHeader === 'function') {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        if (status === 429) {
+            const retryAfter = Math.max(1, Math.ceil(Number(result?.retryAfterSeconds) || 120));
+            res.setHeader('Retry-After', String(retryAfter));
+        }
     }
     if (openAI) {
         return res.status(status).json({

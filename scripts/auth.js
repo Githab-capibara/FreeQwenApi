@@ -2,7 +2,6 @@
 
 import { loadTokens } from '../src/api/tokenManager.js';
 import { addAccountInteractive, reloginAccountInteractive, removeAccountInteractive } from '../src/utils/accountSetup.js';
-import { formatForgetMeAiWatermark } from '../src/utils/branding.js';
 import { prompt } from '../src/utils/prompt.js';
 
 function printDivider() {
@@ -40,7 +39,6 @@ function printAccounts(tokens) {
 }
 
 function handleList(tokens) {
-    console.log(formatForgetMeAiWatermark());
     printAccounts(tokens);
     const active = tokens.filter(t => formatStatus(t).code === STATUS_CODES.OK);
     console.log(`\nАктивных аккаунтов: ${active.length} из ${tokens.length}`);
@@ -50,7 +48,7 @@ function parseArgs(argv) {
     const args = new Set(argv.slice(2));
     if (args.has('--help') || args.has('-h')) return 'help';
     if (args.has('--list')) return 'list';
-    if (args.has('--add')) return 'add';
+    if (args.has('--add') || args.has('--ad')) return 'add'; // --ad алиас для --add (опечатка)
     if (args.has('--relogin')) return 'relogin';
     if (args.has('--remove')) return 'remove';
     return null;
@@ -59,7 +57,6 @@ function parseArgs(argv) {
 function printHelp() {
     printDivider();
     console.log('Скрипт управления аккаунтами Qwen');
-    console.log(formatForgetMeAiWatermark());
     printDivider();
     console.log('Опции:');
     console.log('  --list      Показать список аккаунтов и статусы');
@@ -102,7 +99,6 @@ async function runInteractiveMenu() {
     while (true) {
         const tokens = loadTokens();
         printDivider();
-        console.log(formatForgetMeAiWatermark());
         printAccounts(tokens);
         printDivider();
         console.log('Меню:');

@@ -1,6 +1,7 @@
 import { DEFAULT_MODEL } from '../config.js';
 
 const CANONICAL_MODELS = Object.freeze([
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
@@ -36,6 +37,14 @@ const CANONICAL_MODELS = Object.freeze([
 const CANONICAL_MODEL_SET = new Set(CANONICAL_MODELS);
 
 const ALIAS_GROUPS = Object.freeze({
+    "qwen3.8-max": [
+        "qwen3.8",
+        "Qwen3.8-Max",
+        "qwen3.8-max-latest",
+        "qwen-3.8-max",
+        "qwen38-max",
+        "qwen38max"
+    ],
     "qwen3.7-max": [
         "Qwen3.7-Max",
         "qwen3.7-max-latest",

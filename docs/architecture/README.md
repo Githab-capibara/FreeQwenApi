@@ -10,10 +10,11 @@ Write an ADR when the answer to "why is the code shaped this way?" needs to be a
 
 | File | Description | Status |
 |------|-------------|--------|
-| [01-browser-proxy-architecture.md](01-browser-proxy-architecture.md) | Browser-based proxy architecture decision | Accepted |
-| [02-multi-account-rotation.md](02-multi-account-rotation.md) | Multi-account round-robin rotation | Accepted |
-| [03-openai-compatible-shim.md](03-openai-compatible-shim.md) | OpenAI-compatible API shim layer | Accepted |
-| [04-anti-bot-implementation.md](04-anti-bot-implementation.md) | Anti-bot implementation guide with code modifications | Accepted |
+| [01-browser-proxy-architecture.md](01-browser-proxy-architecture.md) | Use browser-based proxy architecture | Accepted |
+| [02-multi-account-rotation.md](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | Accepted |
+| [03-openai-compatible-shim.md](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | Accepted |
+| [04-anti-bot-implementation.md](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | Accepted |
+| [05-fork-information.md](05-fork-information.md) | Document fork information | Accepted |
 
 ## Format
 

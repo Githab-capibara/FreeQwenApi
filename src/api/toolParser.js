@@ -6,6 +6,23 @@ function stripCodeFences(text) {
     return fence ? fence[1].trim() : trimmed;
 }
 
+// Qwen thinking models wrap chain-of-thought in <think>…</think> (or
+// <thinking>/<reasoning>) and may emit the actual tool-call JSON after it.
+// Strip those blocks before we try to parse, so the tool call survives.
+function stripReasoning(text) {
+    return String(text || '')
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+        .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+        .trim();
+}
+
+// Models frequently emit trailing commas inside JSON objects/arrays. Drop them
+// before JSON.parse so a slightly malformed tool-call block still parses.
+function stripTrailingCommas(text) {
+    return String(text || '').replace(/,(\s*[}\]])/g, '$1');
+}
+
 function normalizeToolArgumentValue(value) {
     if (value === null || value === undefined) return '';
     if (typeof value !== 'string') return value;
@@ -43,9 +60,29 @@ function normalizeToolCalls(calls) {
 }
 
 function parseJsonToolCalls(content) {
-    let text = stripCodeFences(content);
+    let text = stripTrailingCommas(stripReasoning(stripCodeFences(content)));
     const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-    if (fenced) text = fenced[1].trim();
+    if (fenced) text = stripTrailingCommas(stripReasoning(fenced[1].trim()));
+
+    // Fast path: regex-extract a {"tool_calls": [...]} object embedded anywhere
+    // in prose. Models often prepend one sentence of analysis before the JSON.
+    const embedded = text.match(/\{\s*"tool_calls"\s*:\s*\[[\s\S]*?\]\s*\}/);
+    if (embedded) {
+        const fromEmbedded = tryParseToolCallCandidates([embedded[0]]);
+        if (fromEmbedded) return fromEmbedded;
+    }
+
+    // Bare JSON array of calls: [{"name":"x","arguments":{}}]
+    const bareArray = text.match(/\[\s*\{\s*"name"[\s\S]*?\}\s*\]/);
+    if (bareArray) {
+        try {
+            const parsed = JSON.parse(bareArray[0]);
+            if (Array.isArray(parsed)) {
+                const normalized = normalizeToolCalls(parsed);
+                if (normalized) return normalized;
+            }
+        } catch { /* fall through to other strategies */ }
+    }
 
     const first = text.indexOf('{');
     const last = text.lastIndexOf('}');
@@ -59,11 +96,28 @@ function parseJsonToolCalls(content) {
         parseAttempts.push(text + '}');
     }
 
-    for (const candidate of parseAttempts) {
+    const fromCandidates = tryParseToolCallCandidates(parseAttempts);
+    if (fromCandidates) return fromCandidates;
+
+    // Last resort: single tool object like {"name":"x","arguments":{...}} anywhere
+    const singleTool = text.match(/\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*(?:\{[\s\S]*?\}|"[^"]*")\s*\}/);
+    if (singleTool) {
+        try {
+            const parsed = JSON.parse(singleTool[0]);
+            const normalized = normalizeToolCalls([parsed]);
+            if (normalized) return normalized;
+        } catch { /* unparsable, give up */ }
+    }
+    return null;
+}
+
+function tryParseToolCallCandidates(candidates) {
+    for (const candidate of candidates) {
         try {
             const parsed = JSON.parse(candidate);
             let calls = null;
             if (Array.isArray(parsed.tool_calls)) calls = parsed.tool_calls;
+            else if (Array.isArray(parsed)) calls = parsed;
             else if (parsed.function_call || parsed.tool_call) calls = [parsed.function_call || parsed.tool_call];
             else if (parsed.name || parsed.tool) calls = [parsed];
             const normalized = normalizeToolCalls(calls);
@@ -76,7 +130,7 @@ function parseJsonToolCalls(content) {
 }
 
 function normalizeDsmlTags(content) {
-    let text = stripCodeFences(content)
+    let text = stripReasoning(stripCodeFences(content))
         .replace(/[〈《]/g, '<')
         .replace(/[〉》]/g, '>')
         .replace(/[“”]/g, '"')
@@ -116,9 +170,20 @@ function parseDsmlToolCalls(content) {
         // when a closing tool_calls wrapper is present and complete invokes exist.
         wrapperMatch = [`<tool_calls>${text}`, text.replace(/<\/tool_calls>\s*$/i, '')];
     }
-    if (!wrapperMatch) return null;
+    if (wrapperMatch) {
+        const parsed = parseInvokes(wrapperMatch[1]);
+        if (parsed) return parsed;
+    }
 
-    const body = wrapperMatch[1];
+    // Fallback: bare <invoke> blocks without any <tool_calls> wrapper
+    if (/<invoke\b/i.test(text)) {
+        const parsed = parseInvokes(text);
+        if (parsed) return parsed;
+    }
+    return null;
+}
+
+function parseInvokes(body) {
     const invokeRe = /<invoke\b([^>]*)>([\s\S]*?)<\/invoke>/gi;
     const calls = [];
     let invokeMatch;
