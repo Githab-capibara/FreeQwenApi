@@ -260,4 +260,4 @@ print(response)
 
 - [Node.js Examples](01-nodejs-examples.md)
 - [API Reference](../api/README.md)
-- [Quick Start](../guides/01-quickstart.md)
+- [Quick Start](../guides/01-quick-start-guide.md)

@@ -12,7 +12,7 @@
 
 | Guide | Purpose |
 |-------|---------|
-| [Quick Start](guides/01-quickstart.md) | Get running in ~5 minutes |
+| [Quick Start](guides/01-quick-start-guide.md) | Get running in ~5 minutes |
 | [API Reference](api/README.md) | Complete endpoint documentation |
 | [Security Analysis](security/README.md) | Anti-bot solutions and research |
 | [Setup Guides](setup/README.md) | Open WebUI, image generation, models |
@@ -95,8 +95,8 @@ Streaming        █████████████████████
 
 ## Key Entry Points
 
-→ [Quick Start Guide](guides/01-quickstart.md) — Get running in 5 minutes
-→ [API Endpoints Reference](api/01-endpoints.md) — All endpoints documented
+→ [Quick Start Guide](guides/01-quick-start-guide.md) — Get running in 5 minutes
+→ [API Endpoints Reference](api/01-api-endpoints-reference.md) — All endpoints documented
 → [Architecture Decisions](architecture/README.md) — Why the code is shaped this way
 → [Security Analysis](security/01-anti-bot-analysis.md) — Anti-bot deep dive
 → [Environment Variables](reference/01-environment-variables.md) — Full config reference

@@ -15,7 +15,7 @@ Complete reference for available Qwen Chat models accessible through FreeQwenApi
 
 ## Complete Model List
 
-> Auto-generated from `src/AvailableModels.txt`. Last synced: see `docs/setup/03-model-sync-report.md`.
+> Auto-generated from `src/AvailableModels.txt`. Last synced: see `docs/setup/03-model-sync-summary.md`.
 
 | # | Model ID | Category |
 |---|----------|----------|
@@ -101,4 +101,4 @@ curl http://localhost:3264/api/models
 
 - [Environment Variables](01-environment-variables.md)
 - [API Reference](../api/README.md)
-- [Model Sync Report](../setup/03-model-sync-report.md)
+- [Model Sync Report](../setup/03-model-sync-summary.md)

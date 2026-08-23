@@ -249,4 +249,4 @@ node examples/streaming-test.js
 
 - [Python Examples](02-python-examples.md)
 - [API Reference](../api/README.md)
-- [Quick Start](../guides/01-quickstart.md)
+- [Quick Start](../guides/01-quick-start-guide.md)

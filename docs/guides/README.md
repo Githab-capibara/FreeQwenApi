@@ -6,9 +6,9 @@ This directory contains implementation guides, quickstarts, and how-to documenta
 
 | File | Description |
 |------|-------------|
-| [01-quickstart.md](01-quickstart.md) | Quick start guide for demo and testing |
+| [01-quick-start-guide.md](01-quick-start-guide.md) | Quick start guide for demo and testing |
 | [02-image-video-guide.md](02-image-video-guide.md) | Image and video generation guide |
-| [03-implementation-report.md](03-implementation-report.md) | Implementation report and results |
+| [03-implementation-summary.md](03-implementation-summary.md) | Implementation report and results |
 
 ## Cross-References
 

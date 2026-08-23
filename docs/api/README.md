@@ -6,8 +6,8 @@ This directory contains API endpoint documentation and usage examples.
 
 | File | Description |
 |------|-------------|
-| [01-endpoints.md](01-endpoints.md) | Complete API endpoint reference |
-| [02-examples.md](02-examples.md) | Code examples in multiple languages |
+| [01-api-endpoints-reference.md](01-api-endpoints-reference.md) | Complete API endpoint reference |
+| [02-api-usage-examples.md](02-api-usage-examples.md) | Code examples in multiple languages |
 
 ## Base URL
 
