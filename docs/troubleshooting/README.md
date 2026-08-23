@@ -4,8 +4,8 @@ This directory contains troubleshooting guides for common issues with FreeQwenAp
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [01-common-issues.md](01-common-issues.md) | Anti-bot, rate limits, token expiry, and common errors |
 
 ## Quick Links

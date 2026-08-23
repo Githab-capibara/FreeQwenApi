@@ -4,8 +4,8 @@ This directory contains reference documentation for FreeQwenApi configuration, m
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [01-environment-variables.md](01-environment-variables.md) | Complete `.env` variable reference |
 | [02-models-reference.md](02-models-reference.md) | Available Qwen Chat models and capabilities |
 | [03-internal-modules.md](03-internal-modules.md) | Internal module reference (API, browser, utils) |

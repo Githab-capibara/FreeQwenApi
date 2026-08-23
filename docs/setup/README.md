@@ -4,11 +4,11 @@ This directory contains setup guides for Open WebUI, image generation, and model
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [01-openwebui-setup.md](01-openwebui-setup.md) | Open WebUI integration guide |
 | [02-image-generation.md](02-image-generation.md) | Image generation setup and usage |
-| [03-model-sync-summary.md](03-model-sync-summary.md) | Qwen model synchronization report (auto-generated) |
+| [03-model-sync-summary.md](03-model-sync-summary.md) | Qwen model synchronization summary (auto-generated) |
 
 ## Cross-References
 

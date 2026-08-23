@@ -11,6 +11,8 @@
 ![Discord](https://img.shields.io/badge/Discord-Join-blue)
 ![Website](https://img.shields.io/badge/Website-forgetmeai-blue)
 
+![Hero](docs/assets/architecture-diagram.svg)
+
 ## What is this
 
 FreeQwenApi turns a Qwen Chat web account into a local API endpoint:

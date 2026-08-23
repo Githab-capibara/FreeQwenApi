@@ -17,13 +17,22 @@
 
 | Directory | Description |
 |-----------|-------------|
-| [api/](api/README.md) | API endpoint reference and usage examples |
 | [adr/](adr/README.md) | Architecture Decision Records |
+| [api/](api/README.md) | API endpoint reference and usage examples |
+| [architecture/](architecture/README.md) | Architecture overview and components |
 | [assets/](assets/README.md) | Documentation assets, diagrams, benchmarks |
+| [changelog/](changelog/README.md) | Project changelog and release notes |
+| [contributors/](contributors/README.md) | Contributors guide and recognition |
+| [deployment/](deployment/README.md) | Deployment procedures and configurations |
 | [design/](design/README.md) | Design documents and research notes |
 | [examples/](examples/README.md) | Usage examples documentation |
+| [faq/](faq/README.md) | Frequently asked questions |
 | [governance/](governance/README.md) | Contributing, Code of Conduct, Security Policy |
 | [guides/](guides/README.md) | Implementation guides and quickstarts |
+| [integrations/](integrations/README.md) | Third-party integrations documentation |
+| [monitoring/](monitoring/README.md) | Monitoring and observability docs |
+| [operations/](operations/README.md) | Operations runbooks and procedures |
+| [pipeline/](pipeline/README.md) | CI/CD pipeline documentation |
 | [reference/](reference/README.md) | Environment variables, models, modules, scripts |
 | [security/](security/README.md) | Anti-bot analysis and solutions |
 | [setup/](setup/README.md) | Open WebUI, image generation, model sync |

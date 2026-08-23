@@ -4,8 +4,8 @@ This directory contains API endpoint documentation and usage examples.
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [01-api-endpoints-reference.md](01-api-endpoints-reference.md) | Complete API endpoint reference |
 | [02-api-usage-examples.md](02-api-usage-examples.md) | Code examples in multiple languages |
 

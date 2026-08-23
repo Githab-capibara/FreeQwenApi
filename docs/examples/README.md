@@ -6,8 +6,8 @@ This directory contains usage example documentation for the FreeQwenApi Qwen AI 
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [01-nodejs-examples.md](01-nodejs-examples.md) | Node.js SDK and direct API examples |
 | [02-python-examples.md](02-python-examples.md) | Python SDK and httpx examples |
 

@@ -4,11 +4,11 @@ This directory contains implementation guides, quickstarts, and how-to documenta
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [01-quick-start-guide.md](01-quick-start-guide.md) | Quick start guide for demo and testing |
 | [02-image-video-guide.md](02-image-video-guide.md) | Image and video generation guide |
-| [03-implementation-summary.md](03-implementation-summary.md) | Implementation report and results |
+| [03-implementation-summary.md](03-implementation-summary.md) | Implementation summary and results |
 
 ## Cross-References
 

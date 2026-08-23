@@ -4,9 +4,9 @@ This directory contains design documents and research notes for FreeQwenApi.
 
 ## Contents
 
-| File | Description |
-|------|-------------|
-| — | No design documents yet |
+| Guide | Purpose |
+|-------|---------|
+| [01-browser-architecture-research.md](01-browser-architecture-research.md) | Browser proxy architecture research notes |
 
 ## Format
 

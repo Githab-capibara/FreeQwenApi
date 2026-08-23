@@ -5,8 +5,8 @@ in `docs/README.md` and other docs.
 
 ## Contents
 
-| File | Description |
-|------|-------------|
+| Guide | Purpose |
+|-------|---------|
 | [benchmark-donut.svg](benchmark-donut.svg) | Donut chart of request-quality benchmarks |
 | [architecture-diagram.svg](architecture-diagram.svg) | High-level request-flow architecture diagram |
 
