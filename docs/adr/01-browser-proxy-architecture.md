@@ -26,7 +26,7 @@ We use a **browser-based proxy architecture**: Puppeteer controls a headless Chr
 - **Given up:** Direct API efficiency; ability to scale horizontally without browser overhead; sub-second response times
 - **Migration:** If Qwen releases an official API, the browser layer can be replaced with direct HTTP calls while keeping the OpenAI-compatible shim. The abstraction boundary is clean: only the browser transport layer changes.
 
-## Alternatives Considered
+## Alternatives considered
 
 - **Option A: Direct API reverse-engineering** — rejected because Qwen's internal API changes frequently and requires complex authentication flows that are easier handled by a real browser; would need constant maintenance
 - **Option B: Playwright instead of Puppeteer** — rejected because Puppeteer has better stealth plugin ecosystem for anti-bot evasion; Puppeteer's community is larger and has more anti-detection resources

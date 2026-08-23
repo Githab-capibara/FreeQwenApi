@@ -6,7 +6,7 @@
 
 | Guide | Purpose |
 |-------|---------|
-| [Quick Start](guides/01-quick-start-guide.md) | Get running in ~5 minutes |
+| [Quick Start](guides/01-quick-start-guide.md) | First engagement in ~5 minutes |
 | [API Reference](api/README.md) | Complete endpoint documentation |
 | [ADR Index](adr/README.md) | Architecture Decision Records |
 | [Security Analysis](security/README.md) | Anti-bot solutions and research |

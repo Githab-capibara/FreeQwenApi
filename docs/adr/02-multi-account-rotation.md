@@ -26,7 +26,7 @@ We implement a **round-robin token rotation** system with account affinity track
 - **Given up:** Simplicity of single-account design; ability to persist account-resource bindings across restarts (bindings are in-memory only); deterministic request routing
 - **Migration:** If Qwen introduces account-level API keys, the rotation system can be simplified to key rotation rather than session token rotation. The round-robin logic remains useful regardless of auth mechanism.
 
-## Alternatives Considered
+## Alternatives considered
 
 - **Option A: Single account with cooldown** — rejected because it severely limits throughput for agent workloads; a single account hits rate limits within minutes under heavy use
 - **Option B: Random account selection** — rejected because round-robin provides more even distribution and predictable behavior; random selection can lead to uneven load and some accounts being overused

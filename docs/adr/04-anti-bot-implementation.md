@@ -33,7 +33,7 @@ We implement a multi-layer anti-bot evasion strategy:
 - **Given up:** Perfect reproducibility (randomized fingerprints mean each session is unique); simplicity of static configuration
 - **Migration:** If Qwen upgrades their anti-bot system, these measures may need revision. The architecture allows swapping evasion modules without changing the core proxy logic.
 
-## Alternatives Considered
+## Alternatives considered
 
 - **Option A: No anti-bot evasion (naive Puppeteer)** — rejected because Qwen blocks naive automation within minutes; unsustainable for any real usage
 - **Option B: Third-party CAPTCHA solving service (2captcha, Anti-Captcha)** — rejected because it adds cost, latency (human solvers take 10-30s), and dependency on external service availability

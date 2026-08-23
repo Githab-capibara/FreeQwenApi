@@ -31,7 +31,7 @@ For Anthropic compatibility, the shim converts `tools`, `tool_use`, and `tool_re
 - **Given up:** Native Anthropic features (thinking blocks, extended thinking, long context windows); perfect tool call accuracy (depends on Qwen's ability to follow prompt-embedded schemas)
 - **Migration:** If Qwen releases an official API with native tool calling, the shim can be updated to pass through tool calls directly instead of emulating them via prompts. The API surface remains the same; only the internal translation layer changes.
 
-## Alternatives Considered
+## Alternatives considered
 
 - **Option A: Build native integrations per tool** — rejected because it would require maintaining 6+ different API adapters; each tool has different SDK versions and API expectations
 - **Option B: Use LiteLLM as external proxy** — rejected because it adds an extra dependency and deployment step; users prefer a single binary; LiteLLM doesn't solve the Anthropic shim problem for Claude Code

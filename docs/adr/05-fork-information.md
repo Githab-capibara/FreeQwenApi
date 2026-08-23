@@ -20,7 +20,7 @@ We maintain a fork information record in the architecture documentation to track
 - **Given up:** Direct upstream merge compatibility without manual reconciliation
 - **Migration:** If the fork is merged back or abandoned, this ADR should be marked as Superseded
 
-## Alternatives Considered
+## Alternatives considered
 
 - **Option A: No fork record** — rejected because future maintainers would have no visibility into the fork's origin
 - **Option B: Fork info in README only** — rejected because README is user-facing; architecture decisions belong in ADRs

@@ -156,7 +156,7 @@ Update the model list from Qwen Chat metadata:
 npm run models:sync
 ```
 
-Detailed report: [docs/setup/03-model-sync-report.md](docs/setup/03-model-sync-report.md)
+Detailed report: [docs/setup/03-model-sync-summary.md](docs/setup/03-model-sync-summary.md)
 
 ### Chat Completions
 
@@ -584,10 +584,10 @@ curl http://localhost:3264/api/videos/status
 
 ## Documentation
 
-- [docs/setup/03-model-sync-report.md](docs/setup/03-model-sync-report.md) — Qwen Chat model sync report (auto-generated).
+- [docs/setup/03-model-sync-summary.md](docs/setup/03-model-sync-summary.md) — Qwen Chat model sync report (auto-generated).
 - [docs/setup/02-image-generation.md](docs/setup/02-image-generation.md) — DashScope/Qwen Image endpoints.
 - [docs/setup/01-openwebui-setup.md](docs/setup/01-openwebui-setup.md) — Open WebUI integration.
-- [docs/01-fork-info.md](docs/01-fork-info.md) — fork information.
+- [docs/adr/05-fork-information.md](docs/adr/05-fork-information.md) — fork information.
 - [examples/hermes/config-snippet.yaml](examples/hermes/config-snippet.yaml) — Hermes Agent provider; see section above for OpenCode, Claude Code, Codex, and OpenClaw.
 - [examples/litellm/qwen_litellm.yaml](examples/litellm/qwen_litellm.yaml) — LiteLLM bridge.
 

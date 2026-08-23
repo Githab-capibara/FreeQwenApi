@@ -1,20 +1,22 @@
-# Architecture
+# Architecture Decision Records
 
-This directory contains Architecture Decision Records (ADRs) for FreeQwenApi.
+This directory contains the **Architecture Decision Records** (ADRs) for FreeQwenApi — short, numbered, append-only documents that capture non-obvious architectural decisions, their context, and their consequences.
 
 ## When to write one
 
 Write an ADR when the answer to "why is the code shaped this way?" needs to be available to a future maintainer who was not in the room when the decision was made.
 
-## Contents
+## Index
 
-| File | Description | Status |
-|------|-------------|--------|
-| [01-browser-proxy-architecture.md](01-browser-proxy-architecture.md) | Use browser-based proxy architecture | Accepted |
-| [02-multi-account-rotation.md](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | Accepted |
-| [03-openai-compatible-shim.md](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | Accepted |
-| [04-anti-bot-implementation.md](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | Accepted |
-| [05-fork-information.md](05-fork-information.md) | Document fork information | Accepted |
+| # | Title | Status |
+|---|-------|--------|
+| [01](01-browser-proxy-architecture.md) | Use browser-based proxy architecture | Accepted |
+| [02](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | Accepted |
+| [03](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | Accepted |
+| [04](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | Accepted |
+| [05](05-fork-information.md) | Document fork information | Accepted |
+
+Keep this index in sync when you land a new ADR.
 
 ## Format
 
