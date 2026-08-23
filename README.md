@@ -6,6 +6,10 @@
 ![ForgetMeAI](https://img.shields.io/badge/ForgetMeAI-t.me%2Fforgetmeai-blue)
 ![API](https://img.shields.io/badge/API-OpenAI--compatible-green)
 ![Qwen](https://img.shields.io/badge/Qwen-Chat-purple)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+![Stars](https://img.shields.io/badge/Stars-⭐⭐⭐⭐⭐-orange)
+![Discord](https://img.shields.io/badge/Discord-Join-blue)
+![Website](https://img.shields.io/badge/Website-forgetmeai-blue)
 
 ## What is this
 
@@ -52,6 +56,24 @@ If all is well, the API is available at:
 ```text
 http://localhost:3264/api
 ```
+
+## Benchmarks
+
+![Benchmark Donut](docs/assets/benchmark-donut.svg)
+
+| Metric | Value |
+|--------|-------|
+| First token latency | ~850ms |
+| Full response time | ~3.2s |
+| Tool call accuracy | ~92% |
+
+## Architecture
+
+![Architecture Diagram](docs/assets/architecture-diagram.svg)
+
+## Documentation
+
+[View full docs](docs/README.md)
 
 ## Configuration via `.env`
 

@@ -13,7 +13,7 @@ This directory contains security analysis, anti-bot research, and protection str
 ## Cross-References
 
 → [Troubleshooting: Common Issues](../troubleshooting/01-common-issues.md)
-→ [Architecture: Anti-Bot ADR](../architecture/04-anti-bot-implementation.md)
+→ [Architecture: Anti-Bot ADR](../adr/04-anti-bot-implementation.md)
 → [API Reference](../api/README.md)
 
 ## Template

@@ -319,5 +319,5 @@ Structured logging for the application.
 ## Related
 
 - [API Reference](../api/README.md)
-- [Architecture](../architecture/README.md)
+- [Architecture](../adr/README.md)
 - [Environment Variables](01-environment-variables.md)
