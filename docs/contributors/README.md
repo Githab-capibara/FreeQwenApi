@@ -6,7 +6,7 @@ This directory contains contributors documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-contributors-guide.md](01-contributors-guide.md) | How to contribute to the project |
 
 ## Cross-References
 

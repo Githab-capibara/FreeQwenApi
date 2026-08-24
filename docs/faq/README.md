@@ -6,7 +6,7 @@ This directory contains frequently asked questions for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-frequently-asked-questions.md](01-frequently-asked-questions.md) | Common user questions and answers |
 
 ## Cross-References
 

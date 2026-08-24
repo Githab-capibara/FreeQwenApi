@@ -6,7 +6,7 @@ This directory contains operations documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-operations-runbook.md](01-operations-runbook.md) | Runbook for daily operations |
 
 ## Cross-References
 

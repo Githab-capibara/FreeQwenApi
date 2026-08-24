@@ -6,7 +6,7 @@ This directory contains integrations documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-integrations-overview.md](01-integrations-overview.md) | Third-party integrations overview |
 
 ## Cross-References
 

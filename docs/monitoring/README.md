@@ -6,7 +6,7 @@ This directory contains monitoring documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-monitoring-guide.md](01-monitoring-guide.md) | Health checks and logging |
 
 ## Cross-References
 

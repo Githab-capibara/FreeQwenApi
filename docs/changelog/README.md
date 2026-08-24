@@ -6,7 +6,7 @@ This directory contains changelog documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-release-notes.md](01-release-notes.md) | Project releases and breaking changes |
 
 ## Cross-References
 

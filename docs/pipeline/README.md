@@ -6,7 +6,7 @@ This directory contains pipeline documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-ci-cd-pipeline.md](01-ci-cd-pipeline.md) | CI/CD workflow overview |
 
 ## Cross-References
 

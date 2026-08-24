@@ -7,8 +7,8 @@ in `docs/README.md` and other docs.
 
 | Guide | Purpose |
 |-------|---------|
-| [benchmark-donut.svg](benchmark-donut.svg) | Donut chart of request-quality benchmarks |
-| [architecture-diagram.svg](architecture-diagram.svg) | High-level request-flow architecture diagram |
+| [02-benchmark-donut.svg](02-benchmark-donut.svg) | Donut chart of request-quality benchmarks |
+| [01-architecture-diagram.svg](01-architecture-diagram.svg) | High-level request-flow architecture diagram |
 
 These are visual companions only; they are not documentation pages and do
 not carry an ADR/guide format. Edit the SVGs directly when the underlying

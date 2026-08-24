@@ -6,12 +6,12 @@ This directory contains architecture overview and component documentation for Fr
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-architecture-overview.md](01-architecture-overview.md) | High-level components and data flow overview |
 
 ## Cross-References
 
 → [ADR Index](../adr/README.md)
-→ [Architecture Diagram](../assets/architecture-diagram.svg)
+→ [Architecture Diagram](../assets/01-architecture-diagram.svg)
 
 ## Template
 

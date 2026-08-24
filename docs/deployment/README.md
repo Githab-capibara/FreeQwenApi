@@ -6,7 +6,7 @@ This directory contains deployment documentation for FreeQwenApi.
 
 | Guide | Purpose |
 |-------|---------|
-| — | No documents yet |
+| [01-deployment-guide.md](01-deployment-guide.md) | Docker and npm deployment instructions |
 
 ## Cross-References
 

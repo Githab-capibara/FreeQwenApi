@@ -11,7 +11,7 @@
 ![Discord](https://img.shields.io/badge/Discord-Join-blue)
 ![Website](https://img.shields.io/badge/Website-forgetmeai-blue)
 
-![Hero](docs/assets/architecture-diagram.svg)
+![Hero](docs/assets/01-architecture-diagram.svg)
 
 ## What is this
 
@@ -61,7 +61,7 @@ http://localhost:3264/api
 
 ## Benchmarks
 
-![Benchmark Donut](docs/assets/benchmark-donut.svg)
+![Benchmark Donut](docs/assets/02-benchmark-donut.svg)
 
 | Metric | Value |
 |--------|-------|
@@ -71,7 +71,7 @@ http://localhost:3264/api
 
 ## Architecture
 
-![Architecture Diagram](docs/assets/architecture-diagram.svg)
+![Architecture Diagram](docs/assets/01-architecture-diagram.svg)
 
 ## Documentation
 
