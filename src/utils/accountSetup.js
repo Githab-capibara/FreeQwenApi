@@ -24,7 +24,8 @@ export async function addAccountInteractive() {
     logInfo('Браузер откроется, войдите в систему, затем вернитесь к консоли.');
     logInfo('======================================================');
 
-    const ok = await initBrowser(true, true);
+    // Используем отдельный браузер для авторизации, чтобы не мешать работающему прокси
+    const ok = await initBrowser(true, true, true);
     if (!ok) {
         logError('Не удалось запустить браузер.');
         return null;
@@ -91,7 +92,8 @@ export async function reloginAccountInteractive() {
     const account = invalids[num - 1];
 
     logInfo(`Повторная авторизация для ${account.id}`);
-    const ok = await initBrowser(true, true);
+    // Используем отдельный браузер для авторизации
+    const ok = await initBrowser(true, true, true);
     if (!ok) { logError('Не удалось запустить браузер.'); return; }
 
     const token = await extractAuthToken(getBrowserContext(), true);

@@ -94,6 +94,8 @@ export const VIEWPORT_HEIGHT = Number(process.env.VIEWPORT_HEIGHT) || 1080;
 export const USER_AGENT = process.env.USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36';
 // Нейтральный профиль вместо дефолтного /tmp/puppeteer_dev_profile-* (маркер автоматизации).
 export const CHROME_PROFILE_DIR = process.env.CHROME_PROFILE_DIR || '/tmp/freeqwen-chrome-profile';
+// Отдельный профиль для добавления/релогина аккаунтов, чтобы не блокировать рабочий браузер прокси
+export const CHROME_AUTH_PROFILE_DIR = process.env.CHROME_AUTH_PROFILE_DIR || '/tmp/freeqwen-auth-profile';
 
 // ─── Сервер ──────────────────────────────────────────────────────────────────
 export const PORT = Number(process.env.PORT) || 3264;

@@ -13,6 +13,7 @@ import { logInfo, logError, logWarn, logDebug } from '../logger/index.js';
 import {
     CHAT_PAGE_URL, NAVIGATION_TIMEOUT, RETRY_DELAY, PROTOCOL_TIMEOUT,
     VIEWPORT_WIDTH, VIEWPORT_HEIGHT, USER_AGENT, CHROME_PROFILE_DIR,
+    CHROME_AUTH_PROFILE_DIR,
     SESSION_DIR, ACCOUNTS_DIR
 } from '../config.js';
 
@@ -62,11 +63,11 @@ export async function getPageFromContext(context) {
 
 export function isBrowserVisibleMode() { return browserVisibleMode; }
 
-export async function initBrowser(visibleMode = true, skipManualRestart = false) {
-    if (browserInstance) return true;
+export async function initBrowser(visibleMode = true, skipManualRestart = false, authMode = false) {
+    if (browserInstance && !authMode) return true;
 
-        browserVisibleMode = visibleMode;
-        logInfo('Инициализация браузера с МАКСИМАЛЬНОЙ stealth защитой...');
+    browserVisibleMode = visibleMode;
+    logInfo('Инициализация браузера с МАКСИМАЛЬНОЙ stealth защитой...');
 
         // Proxy rotation: получаем прокси для смены IP
         const proxy = proxyManager.getRandomProxy();
@@ -119,7 +120,7 @@ export async function initBrowser(visibleMode = true, skipManualRestart = false)
                 slowMo: visibleMode ? 30 : 0,
                 executablePath: process.env.CHROME_PATH || undefined,
                 ignoreDefaultArgs: ['--enable-automation'],
-                userDataDir: CHROME_PROFILE_DIR,
+                userDataDir: authMode ? CHROME_AUTH_PROFILE_DIR : CHROME_PROFILE_DIR,
                 args: launchArgs,
                 defaultViewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
                 protocolTimeout: PROTOCOL_TIMEOUT,
