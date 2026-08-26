@@ -17,7 +17,7 @@ FreeQwenApi provides an OpenAI-compatible proxy to Qwen Chat via a browser autom
 - **Anti-Bot Layer** – stealth plugins and evasion
 
 ## References
-- [ADR 01](docs/adr/01-browser-proxy-architecture.md)
+- [ADR 01](../adr/01-browser-proxy-architecture.md)
 - [Architecture Diagram](../assets/01-architecture-diagram.svg)
 
 ## Status

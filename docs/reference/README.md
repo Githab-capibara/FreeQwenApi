@@ -10,6 +10,7 @@ This directory contains reference documentation for FreeQwenApi configuration, m
 | [02-models-reference.md](02-models-reference.md) | Available Qwen Chat models and capabilities |
 | [03-internal-modules.md](03-internal-modules.md) | Internal module reference (API, browser, utils) |
 | [04-scripts-and-tests.md](04-scripts-and-tests.md) | CLI scripts and test suite reference |
+| [05-python-entrypoint.md](05-python-entrypoint.md) | Python server entrypoint (`main.py`) and affinity helpers |
 
 ## Quick Links
 

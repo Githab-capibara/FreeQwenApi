@@ -8,6 +8,21 @@ http://localhost:3264/api
 
 ## Health & Status
 
+### GET /api/
+
+Root info handle.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "service": "FreeQwenApi",
+  "baseUrl": "/api"
+}
+```
+
+`HEAD /api/` returns an empty body with status `200` — useful for liveness probes.
+
 ### GET /api/health
 
 Check server health and get basic info.
@@ -54,6 +69,31 @@ Get list of available models.
   ]
 }
 ```
+
+### GET /api/v1/models
+
+OpenAI v1-compatible model list:
+
+```json
+{
+  "object": "list",
+  "data": [
+    { "id": "qwen3.7-max", "object": "model", "created": 0, "owned_by": "qwen" }
+  ]
+}
+```
+
+### GET /api/models/:model
+
+Single-model descriptor in OpenAI format (echoes the requested id):
+
+```json
+{ "id": "qwen3.7-max", "object": "model", "created": 0, "owned_by": "qwen" }
+```
+
+### POST /api/show and POST /api/api/show
+
+No-op compatibility stubs for Ollama-style clients. Always return `200` with an empty JSON object `{}`.
 
 ---
 
@@ -126,6 +166,128 @@ Legacy endpoint supporting `chatType` parameter for different content types:
 Anthropic Messages API shim (for Claude Code compatibility).
 
 Converts Anthropic format to OpenAI format internally.
+
+`POST /api/v1/messages` is an alias with identical behavior.
+
+### GET /api/chat/completions
+
+Not supported — returns `405 Method Not Allowed` with a JSON hint body (the server emits the message text in Russian):
+
+```json
+{
+  "error": "<method not supported>",
+  "message": "<use POST /api/chat/completions>"
+}
+```
+
+### POST /api/chats
+
+Create a new Qwen Chat conversation and bind it to the current client session.
+
+**Body:**
+```json
+{
+  "name": "My chat",
+  "model": "qwen3.7-max"
+}
+```
+
+**Success Response:**
+```json
+{
+  "chatId": "chat-uuid",
+  "success": true
+}
+```
+
+The returned `chatId` is registered in the account-affinity map, so subsequent requests from the same client credentials reuse the same upstream chat.
+
+### POST /api/chats/:chatId/history
+
+Save-point endpoint used by Open WebUI-style clients.
+
+**Body:**
+```json
+{ "messages": [ { "role": "user", "content": "..." } ] }
+```
+
+**Response:**
+```json
+{ "success": true, "chatId": "chat-uuid", "messagesCount": 1 }
+```
+
+### GET /api/chats/:chatId/history
+
+History retrieval endpoint used by Open WebUI-style clients. Currently returns an empty history stub:
+
+```json
+{ "success": true, "chatId": "chat-uuid", "messages": [] }
+```
+
+---
+
+## Responses API (Codex CLI)
+
+### POST /api/responses
+
+OpenAI **Responses API** compatibility endpoint. This is the wire protocol required by the Codex CLI (`wire_api = "responses"`); see [Integrations Overview](../integrations/01-integrations-overview.md).
+
+Accepts `input` (string or structured items), `instructions`, `tools`, `tool_choice` (`auto` / `required` / `none` / named function), and `stream`.
+
+**Body:**
+```json
+{
+  "model": "qwen3.7-max",
+  "input": "Call the write_file tool for smoke.js",
+  "instructions": "You are a coding agent.",
+  "tools": [
+    {
+      "type": "function",
+      "name": "write_file",
+      "description": "Write a file",
+      "parameters": { "type": "object", "properties": { "path": { "type": "string" }, "content": { "type": "string" } } }
+    }
+  ],
+  "tool_choice": "auto",
+  "stream": false
+}
+```
+
+**Success Response (non-streaming):**
+```json
+{
+  "id": "resp_uuid",
+  "object": "response",
+  "created_at": 1771318618,
+  "model": "qwen3.7-max",
+  "status": "completed",
+  "output": [
+    {
+      "type": "function_call",
+      "call_id": "call_...",
+      "name": "write_file",
+      "arguments": "{\"path\":\"smoke.js\",\"content\":\"...\"}",
+      "status": "completed"
+    }
+  ]
+}
+```
+
+When no tool call is detected, `output` contains a single assistant message item:
+```json
+[
+  {
+    "type": "message",
+    "role": "assistant",
+    "status": "completed",
+    "content": [{ "type": "output_text", "text": "Hello!" }]
+  }
+]
+```
+
+**Streaming:** when `"stream": true`, the server emits SSE events: `response.created` → `response.output_item.added` / `response.output_item.done` per output item → `response.completed`.
+
+Tool calls are extracted from the model text by the same parser used for `/chat/completions`; if the upstream returns an anti-bot challenge the endpoint responds with `429` and `antiBot: true`.
 
 ---
 
@@ -233,6 +395,21 @@ Poll video generation task status.
 ---
 
 ## File Upload
+
+### POST /api/files/getstsToken
+
+Obtain an STS (Secure Token Service) credential for direct-to-OSS upload. Requires Node.js entrypoint.
+
+**Body:**
+```json
+{
+  "filename": "document.pdf",
+  "filesize": 102400,
+  "filetype": "application/pdf"
+}
+```
+
+Returns the STS token payload from Qwen Chat. Returns `400` if any of the three fields is missing.
 
 ### POST /api/files/upload
 
