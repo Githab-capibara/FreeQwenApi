@@ -14,7 +14,7 @@ This directory contains project governance documentation: contributing guideline
 ## Cross-References
 
 → [docs/README.md](../README.md)
-→ [CONTRIBUTING](../guides/01-quick-start-guide.md)
+→ [Contributing](01-contributing.md)
 
 ## Template
 

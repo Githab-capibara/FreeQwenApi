@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Date:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
 
 ## Purpose
 
@@ -65,4 +65,4 @@ A: Treat this as a tool for experiments, demos, and local workflows. If you expo
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara

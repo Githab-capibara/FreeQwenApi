@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2025-08-09
-- **Deciders:** @ForgetMeAI
+- **Deciders:** @Githab-capibara
 - **Related:** [01-browser-proxy-architecture.md](01-browser-proxy-architecture.md)
 
 ## Context

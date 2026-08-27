@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Date:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
 
 ## Purpose
 
@@ -57,4 +57,4 @@ npm run smoke         # verify the stack end-to-end
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara

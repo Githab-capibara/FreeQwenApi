@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Date:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
 
 ## Purpose
 
@@ -80,4 +80,4 @@ Never commit or publish `session/` — it contains bearer tokens. See the securi
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara

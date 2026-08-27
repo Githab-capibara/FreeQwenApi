@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Date:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
 
 ## Purpose
 
@@ -74,4 +74,4 @@ Tests: `tests/test_python_affinity.py`, `tests/test_python_main_affinity.py`.
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara

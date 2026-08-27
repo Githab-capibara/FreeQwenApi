@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Date:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
 
 ## Purpose
 
@@ -66,4 +66,4 @@ Winston with custom levels: `error` → `warn` → `info` → `http` → `debug`
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara

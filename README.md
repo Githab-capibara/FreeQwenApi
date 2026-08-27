@@ -3,13 +3,12 @@
 > **Local OpenAI-compatible proxy to Qwen Chat** from [t.me/forgetmeai](https://t.me/forgetmeai).  
 > Text, Qwen 3.7 models, files, Open WebUI, Hermes/LiteLLM, and now image and video generation via Qwen Chat.
 
-![ForgetMeAI](https://img.shields.io/badge/ForgetMeAI-t.me%2Fforgetmeai-blue)
-![API](https://img.shields.io/badge/API-OpenAI--compatible-green)
-![Qwen](https://img.shields.io/badge/Qwen-Chat-purple)
-![License](https://img.shields.io/badge/License-MIT-yellow)
-![Stars](https://img.shields.io/badge/Stars-⭐⭐⭐⭐⭐-orange)
-![Discord](https://img.shields.io/badge/Discord-Join-blue)
-![Website](https://img.shields.io/badge/Website-forgetmeai-blue)
+[![ForgetMeAI](https://img.shields.io/badge/ForgetMeAI-t.me%2Fforgetmeai-blue?link=https://t.me/forgetmeai)](https://t.me/forgetmeai)
+[![API](https://img.shields.io/badge/API-OpenAI--compatible-green)]()
+[![Qwen](https://img.shields.io/badge/Qwen-Chat-purple)](https://chat.qwen.ai)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](../LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-Join-blue?link=https://discord.gg/forgetmeai)](https://discord.gg/forgetmeai)
+[![Website](https://img.shields.io/badge/Website-forgetmeai-blue?link=https://forgetmeai.com)](https://forgetmeai.com)
 
 ![Hero](docs/assets/01-architecture-diagram.svg)
 

@@ -2,7 +2,7 @@
 
 - **Status:** Draft
 - **Date:** 2026-08-24
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
 
 ## Purpose
 High-level overview of FreeQwenApi components and data flow.
@@ -22,4 +22,4 @@ FreeQwenApi provides an OpenAI-compatible proxy to Qwen Chat via a browser autom
 
 ## Status
 - **Last updated:** 2026-08-24
-- **Owner:** @ForgetMeAI
+- **Owner:** @Githab-capibara
