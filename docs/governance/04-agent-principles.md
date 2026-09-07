@@ -1,5 +1,7 @@
 # 04. Agent Working Principles
 
+> **Format note:** This document follows the [Michael Nygard ADR format](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) but is placed in `docs/governance/` because it governs project operations rather than a specific architectural choice. It is tracked as an ADR-style governance record.
+
 - **Status:** Accepted
 - **Date:** 2026-08-23
 - **Deciders:** @Githab-capibara

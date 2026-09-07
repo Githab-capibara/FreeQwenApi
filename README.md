@@ -585,6 +585,8 @@ curl http://localhost:3264/api/videos/status
 
 ## Documentation
 
+- [docs/README.md](docs/README.md) — Master index and full documentation map
+- [docs/adr/README.md](docs/adr/README.md) — Architecture Decision Records index
 - [docs/setup/03-model-sync-summary.md](docs/setup/03-model-sync-summary.md) — Qwen Chat model sync report (auto-generated).
 - [docs/setup/02-image-generation.md](docs/setup/02-image-generation.md) — DashScope/Qwen Image endpoints.
 - [docs/setup/01-openwebui-setup.md](docs/setup/01-openwebui-setup.md) — Open WebUI integration.
