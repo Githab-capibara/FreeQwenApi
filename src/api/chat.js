@@ -850,8 +850,13 @@ function buildPayloadV2(messageContent, model, chatId, parentId, files, systemMe
     if (size) payload.size = size;
 
     if (systemMessage) {
-        payload.system_message = systemMessage;
-        logDebug(`System message: ${systemMessage.substring(0, 100)}${systemMessage.length > 100 ? '...' : ''}`);
+        // Страховка: если клиент (AI SDK/OpenAI) прислал system content массивом
+        // content-блоков, приводим к строке, иначе substring() ниже упадёт.
+        const sysMessageStr = typeof systemMessage === 'string'
+            ? systemMessage
+            : (Array.isArray(systemMessage) ? systemMessage.map(b => (b && b.type === 'text') ? b.text : (b && typeof b === 'string') ? b : JSON.stringify(b)).filter(Boolean).join('\n') : String(systemMessage));
+        payload.system_message = sysMessageStr;
+        logDebug(`System message: ${sysMessageStr.substring(0, 100)}${sysMessageStr.length > 100 ? '...' : ''}`);
     }
     if (tools && Array.isArray(tools) && tools.length > 0) {
         payload.tools = tools;

@@ -443,7 +443,7 @@ router.use(async (req, res, next) => {
 
 function parseOpenAIMessages(messages) {
     const systemMsg = messages.find(msg => msg.role === 'system');
-    const systemMessage = systemMsg ? systemMsg.content : null;
+    const systemMessage = systemMsg ? stringifyOpenAIContent(systemMsg.content) : null;
     const lastUserMessage = messages.filter(msg => msg.role === 'user').pop();
     
     if (!lastUserMessage) {
@@ -1473,7 +1473,7 @@ router.post('/chat/completions', async (req, res) => {
 
         // Извлекаем system message если есть
         const systemMsg = messages.find(msg => msg.role === 'system');
-        const systemMessage = systemMsg ? systemMsg.content : null;
+        const systemMessage = systemMsg ? stringifyOpenAIContent(systemMsg.content) : null;
         const { combinedTools } = buildCombinedTools(tools, functions, tool_choice);
 
         const preparedInput = prepareOpenAIMessageInput(messages, combinedTools, effectiveChatId);
@@ -1520,13 +1520,15 @@ router.post('/chat/completions', async (req, res) => {
             logInfo(`Модель "${model}" заменена на "${mappedModel}"`);
         }
         logInfo(`Используется модель: ${mappedModel}`);
-        if (systemMessage) logInfo(`System message: ${systemMessage.substring(0, 50)}${systemMessage.length > 50 ? '...' : ''}`);
+        if (systemMessage) {
+            logInfo(`System message: ${systemMessage.substring(0, 50)}${systemMessage.length > 50 ? '...' : ''}`);
+        }
 
         const qwenTools = null; // Qwen Chat web API не умеет OpenAI tool schemas; эмулируем через JSON prompt ниже.
         const toolAwareSystemMessage = applyToolPrompt(systemMessage, combinedTools);
 
         if (toolAwareSystemMessage) {
-            logInfo(`System message: ${toolAwareSystemMessage.substring(0, 50)}${toolAwareSystemMessage.length > 50 ? '...' : ''}`);
+            logInfo(`System message (tool-aware): ${toolAwareSystemMessage.substring(0, 50)}${toolAwareSystemMessage.length > 50 ? '...' : ''}`);
         }
 
         // Логируем полную историю сообщений
@@ -1892,7 +1894,7 @@ router.post('/v1/chat/completions', async (req, res) => {
 
         // Извлекаем system message если есть
         const systemMsg = messages.find(msg => msg.role === 'system');
-        const systemMessage = systemMsg ? systemMsg.content : null;
+        const systemMessage = systemMsg ? stringifyOpenAIContent(systemMsg.content) : null;
         const { combinedTools } = buildCombinedTools(tools, functions, tool_choice);
 
         const preparedInput = prepareOpenAIMessageInput(messages, combinedTools, effectiveChatId);
