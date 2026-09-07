@@ -315,6 +315,14 @@ async function getPage(context) {
                     return await browser.newPage();
                 }
             } catch (error) {
+                // CDP-канал мёртв: создавать новые вкладки нельзя. Отдаём ошибку
+                // наверх (createChatV2 переинициализирует браузер и повторит),
+                // а НЕ возвращаем потенциально отвязанную страницу — иначе
+                // page.goto() упадёт с "Attempted to use detached Frame" на
+                // каждый запрос, как до этого фикса.
+                if (isConnectionClosedError(error)) {
+                    throw new Error('Браузер отключён (Connection closed): требуется переинициализация');
+                }
                 logWarn(`Не удалось создать новую страницу из текущего контекста: ${error.message}`);
             }
         }
@@ -327,6 +335,11 @@ async function getPage(context) {
     }
 
     throw new Error('Неверный контекст: не страница Puppeteer, не контекст Playwright');
+}
+
+function isConnectionClosedError(error) {
+    const msg = error && (error.message || String(error));
+    return /connection closed|target closed|session closed/i.test(msg);
 }
 
 export const pagePool = {
@@ -2084,6 +2097,23 @@ export async function createChatV2(model = DEFAULT_MODEL, title = 'Новый ч
             accountId: tokenObj.id
         };
     } catch (error) {
+        // Обрыв CDP / detached frame = сломанный браузер, а не логика запроса.
+        // Один раз переинициализируем браузер и повторяем; на повторную ошибку
+        // возвращаем её как есть (авто-рестарт уже мог запуститься из browser.on).
+        const isBrowserBroken = /connection closed|detached frame|target closed|session closed|page closed|target crashed/i
+            .test(error && (error.message || error.toString())) && retryCount === 0;
+        if (isBrowserBroken) {
+            logWarn('Обнаружен сбой браузера (CDP), переинициализация и повтор создания чата...');
+            try {
+                pagePool.clear().catch(() => {});
+                await shutdownBrowser();
+                await initBrowser(false);
+            } catch (reinitError) {
+                logError('Не удалось переинициализировать браузер', reinitError);
+            }
+            await delay(RETRY_DELAY);
+            return createChatV2(model, title, retryCount + 1, chatType, preferredTokenObj);
+        }
         logError('Ошибка при создании чата', error);
         return { error: error.toString() };
     } finally {

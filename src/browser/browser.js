@@ -27,6 +27,13 @@ let browserContext = null;
 let browserVisibleMode = false;
 export let isAuthenticated = false;
 
+// Защита от гонок: пачка событий disconnected не должна порождать пачку launch.
+let autoRestartInFlight = false;
+let autoRestartCooldownUntil = 0;
+// shutdownBrowser() вызывается и намеренно (auth, рестарт, stop): в этом случае
+// событие disconnected (от закрытия браузера) не должно планировать лишний рестарт.
+let intentionalShutdown = false;
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Создаёт рабочую страницу из контекста/страницы браузера. Вынесена сюда,
@@ -125,6 +132,17 @@ export async function initBrowser(visibleMode = true, skipManualRestart = false,
                 defaultViewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
                 protocolTimeout: PROTOCOL_TIMEOUT,
                 ignoreHTTPSErrors: true
+            });
+
+            // После продолжительного простоя или аварии Chrome CDP-канал может
+            // молча оборваться: node остаётся с живым объектом browserInstance,
+            // а реальный браузер мёртв. Это ведёт к "Connection closed" →
+            // "Attempted to use detached Frame" на все последующие запросы.
+            // Ловим событие и автоматически поднимаем свежий браузер.
+            browserInstance.on('disconnected', () => {
+                if (intentionalShutdown) return;
+                logWarn('CDP-соединение с браузером оборвано (browser disconnected), планируем авто-перезапуск');
+                void scheduleAutoBrowserRestart();
             });
 
         const pages = await browserInstance.pages();
@@ -384,6 +402,26 @@ async function startManualAuthenticationPuppeteer(page, skipManualRestart) {
     }
 }
 
+async function scheduleAutoBrowserRestart() {
+    if (autoRestartInFlight) return;
+    const now = Date.now();
+    if (now < autoRestartCooldownUntil) return;
+    autoRestartInFlight = true;
+    autoRestartCooldownUntil = now + 60_000;
+    try {
+        await delay(RETRY_DELAY);
+        logInfo('Авто-перезапуск браузера после обрыва CDP...');
+        await shutdownBrowser();
+        await delay(RETRY_DELAY);
+        await initBrowser(false);
+        logInfo('Браузер перезапущен автоматически');
+    } catch (e) {
+        logError('Ошибка при авто-перезапуске браузера', e);
+    } finally {
+        autoRestartInFlight = false;
+    }
+}
+
 export async function restartBrowserInHeadlessMode() {
     logInfo('Перезапуск браузера в фоновом режиме...');
     const token = getAuthToken();
@@ -395,6 +433,7 @@ export async function restartBrowserInHeadlessMode() {
 }
 
 export async function shutdownBrowser() {
+    intentionalShutdown = true;
     try {
         try { await clearPagePool(); } catch (e) { logError('Ошибка при очистке пула страниц', e); }
         if (browserInstance) {
@@ -409,6 +448,8 @@ export async function shutdownBrowser() {
         logInfo('Браузер закрыт');
     } catch (error) {
         logError('Ошибка при завершении работы браузера', error);
+    } finally {
+        intentionalShutdown = false;
     }
 }
 
