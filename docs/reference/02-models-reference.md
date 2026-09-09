@@ -101,4 +101,4 @@ curl http://localhost:3264/api/models
 
 - [Environment Variables](01-environment-variables.md)
 - [API Reference](../api/README.md)
-- [Model Sync Report](../setup/03-model-sync-summary.md)
+- [Model Sync Output](../setup/03-model-sync-summary.md)

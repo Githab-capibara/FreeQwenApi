@@ -1,4 +1,4 @@
-# Common Issues and Solutions
+# 01. Common Issues and Solutions
 
 This guide covers the most frequently encountered issues when running FreeQwenApi.
 
@@ -143,7 +143,7 @@ npm run auth -- --relogin
 npm run models:sync
 ```
 
-If sync fails, check the report at `docs/setup/03-model-sync-summary.md`.
+If sync fails, Check the output at `docs/setup/03-model-sync-summary.md`.
 
 ---
 

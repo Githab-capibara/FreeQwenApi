@@ -1,6 +1,11 @@
-# Anti-Bot Summary: Qwen Chat Analysis
+# 02. Anti-Bot Findings
 
-## What the Project Does Now
+- **Status:** Active
+- **Date:** 2026-08-21
+- **Deciders:** @Githab-capibara
+- **Related:** [ADR 04 — Anti-Bot Implementation](../adr/04-anti-bot-implementation.md), [Security Analysis](01-anti-bot-analysis.md)
+
+## Purpose
 
 FreeQwenApi uses **Puppeteer + Stealth Plugin** to bypass Qwen anti-bot:
 
@@ -257,4 +262,4 @@ await page.setUserAgent(randomUA);
 
 ---
 
-**Full report**: See `security/01-anti-bot-analysis.md` (30+ pages with code)
+**Full analysis**: See `security/01-anti-bot-analysis.md` (30+ pages with code)

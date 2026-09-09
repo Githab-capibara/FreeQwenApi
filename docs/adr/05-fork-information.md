@@ -1,4 +1,4 @@
-# 05. Record fork provenance
+# 05. Record Fork Provenance
 
 - **Status:** Accepted
 - **Date:** 2025-08-21

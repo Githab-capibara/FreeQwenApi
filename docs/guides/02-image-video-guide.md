@@ -1,4 +1,4 @@
-# Image and Video Generation Guide
+# 02. Image and Video Generation Guide
 
 ## Overview
 

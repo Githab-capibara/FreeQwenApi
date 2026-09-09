@@ -11,6 +11,7 @@ This directory contains reference documentation for FreeQwenApi configuration, m
 | [03-internal-modules.md](03-internal-modules.md) | Internal module reference (API, browser, utils) |
 | [04-scripts-and-tests.md](04-scripts-and-tests.md) | CLI scripts and test suite reference |
 | [05-python-entrypoint.md](05-python-entrypoint.md) | Python server entrypoint (`main.py`) and affinity helpers |
+| [06-anti-bot-improvements.md](06-anti-bot-improvements.md) | Anti-bot improvements implementation notes |
 
 ## Quick Links
 

@@ -1,4 +1,11 @@
-# Security Policy
+# 03. Security Policy
+
+- **Status:** Active
+- **Date:** 2026-08-23
+- **Deciders:** @Githab-capibara
+- **Related:** [docs/README.md](../README.md)
+
+## Purpose
 
 ## Supported Versions
 

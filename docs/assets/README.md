@@ -13,7 +13,3 @@ in `docs/README.md` and other docs.
 These are visual companions only; they are not documentation pages and do
 not carry an ADR/guide format. Edit the SVGs directly when the underlying
 numbers or architecture change.
-
-## Template
-
-Use [`template.md`](template.md) as a starting point for new visual assets.

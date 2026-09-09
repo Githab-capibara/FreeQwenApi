@@ -1,6 +1,15 @@
-# Code of Conduct
+# 02. Code of Conduct
+
+- **Status:** Active
+- **Date:** 2026-08-23
+- **Deciders:** @Githab-capibara
+- **Related:** [docs/README.md](../README.md)
 
 We want FreeQwenApi to be a welcoming project for everyone.
+
+## Purpose
+
+Standards for respectful collaboration and enforcement procedures.
 
 ## Our standards
 

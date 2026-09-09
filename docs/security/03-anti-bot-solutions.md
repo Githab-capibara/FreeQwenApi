@@ -1,6 +1,11 @@
-# Anti-Bot Solutions for FreeQwenApi
+# 03. Anti-Bot Solutions
 
-## Found Solutions
+- **Status:** Active
+- **Date:** 2026-08-21
+- **Deciders:** @Githab-capibara
+- **Related:** [ADR 04 — Anti-Bot Implementation](../adr/04-anti-bot-implementation.md), [Security Analysis](01-anti-bot-analysis.md)
+
+## Purpose
 
 ### 1. CloakBrowser (Recommended) ⭐
 **GitHub:** https://github.com/CloakHQ/CloakBrowser

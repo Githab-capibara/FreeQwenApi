@@ -1,4 +1,4 @@
-# Quick Start for FreeQwenApi Demo
+# 01. Quick Start for FreeQwenApi Demo
 
 This fork is prepared for practical video and demo scenarios:
 
@@ -21,7 +21,7 @@ Do not publish `session/`, cookies, or token files.
 npm run models:sync
 ```
 
-This command reads public prerendered model metadata from `https://chat.qwen.ai/`, merges it with `src/AvailableModels.txt`, and writes the report here:
+This command reads public prerendered model metadata from `https://chat.qwen.ai/`, merges it with `src/AvailableModels.txt`, and writes the output here:
 
 ```text
 docs/setup/03-model-sync-summary.md

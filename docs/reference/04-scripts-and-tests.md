@@ -61,9 +61,9 @@ Syncs the available model list from Qwen Chat metadata.
 **What it does:**
 1. Fetches prerendered model metadata from `https://chat.qwen.ai/`
 2. Merges with `src/AvailableModels.txt`
-3. Writes report to `docs/setup/03-model-sync-summary.md`
+3. Writes output to `docs/setup/03-model-sync-summary.md`
 
-**Report includes:**
+**Output includes:**
 - Total model count
 - New models since last sync
 - Removed models

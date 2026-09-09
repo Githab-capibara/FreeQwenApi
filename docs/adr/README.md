@@ -8,13 +8,13 @@ Write an ADR when the answer to "why is the code shaped this way?" needs to be a
 
 ## Index
 
-| # | Title | Status |
+| # | Title | Date | Status |
 |---|-------|--------|
-| [01](01-browser-proxy-architecture.md) | Use browser-based proxy architecture | Accepted |
-| [02](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | Accepted |
-| [03](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | Accepted |
-| [04](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | Accepted |
-| [05](05-fork-information.md) | Document fork information | Accepted |
+| [01](01-browser-proxy-architecture.md) | Use browser-based proxy architecture | 2025-08-09 | Accepted |
+| [02](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | 2025-08-21 | Accepted |
+| [03](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | 2025-08-21 | Accepted |
+| [04](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | 2026-08-21 | Accepted |
+| [05](05-fork-information.md) | Document fork information | 2025-08-21 | Accepted |
 
 Keep this index in sync when you land a new ADR.
 

@@ -1,4 +1,9 @@
-# Qwen Chat Anti-Bot Analysis and Improvement Plan
+# 01. Anti-Bot Analysis and Improvement Plan
+
+- **Status:** Active
+- **Date:** 2026-08-21
+- **Deciders:** @Githab-capibara
+- **Related:** [ADR 04 — Anti-Bot Implementation](../adr/04-anti-bot-implementation.md), [Troubleshooting](../troubleshooting/01-common-issues.md)
 
 ## 1. Project Architecture Overview
 

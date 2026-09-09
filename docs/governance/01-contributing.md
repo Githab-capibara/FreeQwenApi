@@ -1,8 +1,17 @@
-# Contributing
+# 01. Contributing
+
+- **Status:** Active
+- **Date:** 2026-08-23
+- **Deciders:** @Githab-capibara
+- **Related:** [docs/README.md](../README.md)
 
 Thanks for wanting to improve FreeQwenApi.
 
-## Getting started
+## Purpose
+
+Brief, actionable onboarding notes for new contributors. Full standards live in [ADR 11](../governance/04-agent-principles.md) and the root README.
+
+## Details
 
 1. Fork and clone the repository.
 2. Install dependencies: `npm install`.

@@ -1,4 +1,4 @@
-# Implementation Summary: Anti-Bot Improvements
+# 06. Anti-Bot Improvements Implementation Notes
 
 ## Completed Changes
 
