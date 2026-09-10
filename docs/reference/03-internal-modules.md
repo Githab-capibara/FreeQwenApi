@@ -1,4 +1,8 @@
-# Internal Modules Reference
+# 03. Internal Modules Reference
+
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
 
 Reference documentation for key internal modules in FreeQwenApi.
 
@@ -213,7 +217,7 @@ Manages browser session lifecycle and token persistence.
 Provides randomized User-Agent, Accept-Language, and Timezone values.
 
 **Key functions:**
-- `getRandomUserAgent()` — returns random UA from 13 variants
+- `getRandomUserAgent()` — returns random UA from 19 variants
 - `getRandomAcceptLanguage()` — returns random Accept-Language header
 - `getRandomTimezone()` — returns random timezone
 - `parseUserAgent(ua)` — parses browser/OS from UA string

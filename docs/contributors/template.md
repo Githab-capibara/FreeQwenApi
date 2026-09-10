@@ -1,14 +1,26 @@
-# NN. Title
+# NN. Contributor Guide Title
 
-- **Status:** Draft
+- **Status:** Active
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Overview
+## Prerequisites
 
-Brief description.
+What the contributor needs before starting.
 
-## Details
+## How to Contribute
 
-Content here.
+Step-by-step workflow.
+
+## Code Style
+
+Linting rules, formatting conventions.
+
+## Pull Request Process
+
+From fork to merge.
+
+## Getting Help
+
+Where to ask questions.

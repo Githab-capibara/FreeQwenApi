@@ -1,5 +1,9 @@
 # 02. Image Generation Setup
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 > **Note:** By default, FreeQwenApi uses **Qwen Chat** for image generation — no `DASHSCOPE_API_KEY` is required. This guide covers the **optional DashScope provider** for users who want direct API access with higher rate limits or different models.
 
 ## Getting DashScope API Key

@@ -1,14 +1,27 @@
-# NN. Title
+# NN. Deployment Guide Title
 
-- **Status:** Draft
+- **Status:** Active
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Overview
+## Prerequisites
 
-Brief description.
+Server requirements, dependencies.
 
-## Details
+## Step-by-step
 
-Content here.
+1. First step.
+2. Second step.
+
+## Verification
+
+How to confirm the deployment succeeded.
+
+## Rollback
+
+How to undo the deployment.
+
+## References
+
+- Links to related docs.

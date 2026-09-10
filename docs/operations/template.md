@@ -1,14 +1,32 @@
-# NN. Title
+# NN. Runbook Title
 
-- **Status:** Draft
+- **Status:** Active
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Overview
+## Symptom
 
-Brief description.
+What the operator sees.
 
-## Details
+## Diagnosis
 
-Content here.
+How to determine the root cause.
+
+## Resolution
+
+### Step 1: Title
+
+Action.
+
+### Step 2: Title
+
+Action.
+
+## Escalation
+
+When and how to escalate.
+
+## Prevention
+
+How to prevent recurrence.

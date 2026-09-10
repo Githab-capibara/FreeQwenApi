@@ -1,4 +1,4 @@
-# Python Entrypoint Reference
+# 05. Python Entrypoint Reference
 
 Reference for the Python server entrypoint (`main.py`) and its account-affinity helpers (`python_affinity.py`) — an alternative to the Node.js entrypoint (`index.js`).
 

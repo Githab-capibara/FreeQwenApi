@@ -3,89 +3,78 @@
 - **Status:** Active
 - **Date:** 2026-08-21
 - **Deciders:** @Githab-capibara
-- **Related:** [ADR 04 — Anti-Bot Implementation](../adr/04-anti-bot-implementation.md), [Security Analysis](01-anti-bot-analysis.md)
+- **Related:** [ADR 04 — Anti-Bot Implementation](../adr/04-anti-bot-implementation.md), [Full Analysis](01-anti-bot-analysis.md), [Summary](02-anti-bot-summary.md)
 
 ## Purpose
 
-### 1. CloakBrowser (Recommended) ⭐
+Evaluate browser automation solutions for bypassing Qwen anti-bot protection and recommend the best approach for FreeQwenApi.
+
+## Solution Comparison
+
+| Solution | Stealth Level | Install Size | Status in FreeQwenApi |
+|----------|--------------|--------------|----------------------|
+| Puppeteer + Stealth | Medium | ~0 MB (bundled) | Working — current solution |
+| CloakBrowser | High | ~200 MB | Pending — requires download |
+| Patchright | Medium | ~50 MB | Error — needs browser install |
+| Camoufox | High | ~200 MB | Not evaluated |
+| Obscura | High | ~150 MB | Not evaluated |
+
+## Recommended: CloakBrowser
+
 **GitHub:** https://github.com/CloakHQ/CloakBrowser
 
-**Features:**
 - 71 C++ patches at Chromium source code level
-- `humanize=True` - human-like mouse curves, keyboard timing, scroll patterns
+- `humanize=True` — human-like mouse curves, keyboard timing, scroll patterns
 - 0.9 reCAPTCHA v3 score (human level)
 - Automatically passes Cloudflare Turnstile
 - 30/30 bot detection tests passed
 
-**Installation:**
 ```bash
-# Python
-pip install cloakbrowser
-
-# Node.js
 npm install cloakbrowser playwright-core
-
-# Docker
-docker run --rm cloakhq/cloakbrowser cloaktest
 ```
 
-**Usage (Node.js):**
 ```javascript
 import { launch } from 'cloakbrowser';
 
 const browser = await launch({
-    headless: false,  // headed mode for maximum stealth
-    humanize: true,   // human-like mouse, keyboard, scroll
-    geoip: true,      // match timezone + locale
+    headless: false,
+    humanize: true,
+    geoip: true,
 });
 
 const page = await browser.newPage();
 await page.goto('https://chat.qwen.ai');
 ```
 
----
+## Current: Puppeteer + Stealth Plugin
 
-### 2. Puppeteer + Stealth Plugin (Works!) ✅
-**Already installed and tested!**
+Already installed and working in FreeQwenApi.
 
-**Test passed:**
-```
-✅ Title: Qwen Studio
-✅ Screenshot saved
+```bash
+npm install puppeteer-extra puppeteer-extra-plugin-stealth
 ```
 
-**Usage:**
 ```javascript
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
 puppeteer.use(StealthPlugin());
 
 const browser = await puppeteer.launch({
     headless: true,
-    executablePath: '/home/d/.cache/puppeteer/chrome/linux-148.0.7778.97/chrome-linux64/chrome',
-    args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-    ]
+    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
 });
 
 const page = await browser.newPage();
-
-// Mask WebDriver
 await page.evaluateOnNewDocument(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined
-    });
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 });
-
 await page.goto('https://chat.qwen.ai', { waitUntil: 'domcontentloaded' });
 ```
 
----
+## Alternatives Evaluated
 
-### 3. Patchright (Undetected Playwright)
+### Patchright (Undetected Playwright)
+
 **GitHub:** https://github.com/Kaliiiiiiiiii-Vinyzu/patchright
 
 ```bash
@@ -93,91 +82,21 @@ npm install patchright
 npx playwright install chromium
 ```
 
----
+Status: Requires manual browser install, currently not working in FreeQwenApi.
 
-### 4. Camoufox
-**GitHub:** https://github.com/daijro/camoufox
-**Stars:** 11,093
+### Camoufox
 
----
+**GitHub:** https://github.com/daijro/camoufox (11k stars)
 
-### 5. Obscura
-**GitHub:** https://github.com/h4ckf0r0day/obscura
-**Stars:** 21,379
+Firefox-based anti-detection browser. Not yet evaluated for FreeQwenApi.
 
----
+### Obscura
 
-## Integration in FreeQwenApi
+**GitHub:** https://github.com/h4ckf0r0day/obscura (21k stars)
 
-### Option 1: Use Puppeteer Stealth (already works)
-
-**File:** `src/browser/browser.js`
-
-Add stealth plugin:
-```javascript
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
-puppeteer.use(StealthPlugin());
-
-// In launch function:
-const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.CHROME_PATH || undefined,
-    args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-features=IsolateOrigins,site-per-process',
-    ]
-});
-
-// WebDriver masking
-await page.evaluateOnNewDocument(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined
-    });
-});
-```
-
-### Option 2: Use CloakBrowser (when loaded)
-
-**File:** `src/browser/browser.js`
-
-```javascript
-import { launch } from 'cloakbrowser';
-
-const browser = await launch({
-    headless: false,  // headed mode for maximum stealth
-    humanize: true,   // human-like mouse, keyboard, scroll
-    geoip: true,      // match timezone + locale
-});
-```
-
----
+Chrome-based anti-detection browser. Not yet evaluated for FreeQwenApi.
 
 ## Recommendations
 
-### For Qwen Chat API:
-1. **Puppeteer + Stealth Plugin** - already works, use now
-2. **CloakBrowser** - best solution, but requires 200MB download
-
-### For code review (ocr):
-```bash
-# Use ollama (no anti-bot)
-ocr review --concurrency 1 --provider ollama --model qwen3-coder-next
-
-# Or wait for Qwen unblock (30-60 minutes)
-ocr review --concurrency 1 --provider my-qwen --timeout 60
-```
-
----
-
-## Status
-
-| Solution | Status | Note |
-|----------|--------|------|
-| Puppeteer + Stealth | ✅ Works | Already installed |
-| CloakBrowser | ⏳ Loading | 200MB, requires time |
-| Patchright | ⚠️ Error | Need to install browsers |
-| Ollama | ✅ Works | Alternative for ocr |
+1. **For Qwen Chat API**: Use Puppeteer + Stealth (already works) as baseline, migrate to CloakBrowser when ready
+2. **For code review**: Use an alternative provider (e.g. Ollama) to avoid Qwen anti-bot entirely, or wait 30-60 minutes for the block to expire

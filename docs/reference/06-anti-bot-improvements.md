@@ -1,5 +1,10 @@
 # 06. Anti-Bot Improvements Implementation Notes
 
+- **Status:** Active
+- **Date:** 2026-08-21
+- **Deciders:** @Githab-capibara
+- **Related:** [ADR 04](../adr/04-anti-bot-implementation.md), [Security Summary](../security/02-anti-bot-summary.md)
+
 ## Completed Changes
 
 ### P0 - Critical Improvements (COMPLETED)
@@ -52,7 +57,7 @@ export function buildTrajectory(startX, endX, steps = 28) {
 #### 2. User-Agent Rotation (`src/browser/userAgentRotator.js`)
 
 **New file with:**
-- 18 User-Agents (Windows/Mac/Linux + Chrome/Firefox/Safari)
+- 19 User-Agents (Windows/Mac/Linux + Chrome/Firefox/Safari)
 - 10 Accept-Languages
 - 12 Timezones
 - Functions: `getRandomUserAgent()`, `getRandomAcceptLanguage()`, `getRandomTimezone()`

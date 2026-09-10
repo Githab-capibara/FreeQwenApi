@@ -1,4 +1,8 @@
-# Environment Variables Reference
+# 01. Environment Variables Reference
+
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
 
 Complete reference for all `.env` configuration options in FreeQwenApi.
 

@@ -1,25 +1,29 @@
-# FreeQwenApi Documentation Template
+# NN. Title in present-tense imperative
 
-Use this template as the starting point for new documentation files in this project.
+- **Status:** Proposed | Active | Deprecated | Superseded by NN
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** issue/PR/ADR links
 
-## Purpose
+## Context
 
-Briefly describe what this document covers and why it exists.
+What forces are at play? What makes this document necessary?
 
-## Overview
+## Decision / Purpose
 
-Provide a high-level summary of the topic.
+What are we doing? Stated affirmatively, in the present tense.
 
-## Details
+## Consequences
 
-Structured information (tables, lists, code blocks).
+- **Easier:** what this unlocks.
+- **Harder:** what this constrains.
+- **Given up:** capabilities or flexibility we explicitly walk away from.
+
+## Alternatives considered
+
+- **Option A:** one-line description. Rejected because ...
+- **Option B:** one-line description. Rejected because ...
 
 ## References
 
-Links to related documents.
-
-## Status
-
-- **Last updated:** YYYY-MM-DD
-- **Owner:** @username
-- **Related:** links
+- Links to related documents.

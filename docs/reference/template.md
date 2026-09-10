@@ -1,6 +1,9 @@
-# Reference Document Template
+# NN. Reference Title
 
-Use this template for new reference documents in the reference/ directory.
+- **Status:** Active
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
 ## Overview
 
@@ -10,6 +13,6 @@ Brief description of what this reference covers.
 
 Structured reference information (tables, lists, code blocks).
 
-## Related
+## References
 
-Links to related documents.
+- Links to related documents, source code.

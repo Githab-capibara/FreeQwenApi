@@ -1,14 +1,19 @@
-# API Document Template
+# NN. Endpoint Title
 
-Use this template for new API documents in the api/ directory.
+- **Status:** Proposed | Active | Deprecated
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
-## Endpoint
+## Overview
 
-`METHOD /path`
+One-paragraph summary of what this endpoint does.
 
-## Description
+## Method & Path
 
-What this endpoint does.
+```
+METHOD /path
+```
 
 ## Request
 
@@ -16,25 +21,48 @@ What this endpoint does.
 
 | Header | Required | Description |
 |--------|----------|-------------|
-| Content-Type | Yes | application/json |
+| `X-Header` | yes | ... |
 
-### Body
+### Body (JSON)
 
 ```json
-{}
+{
+  "field": "value"
+}
 ```
+
+### Parameters
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `param` | string | yes | — | ... |
 
 ## Response
 
-### Success
+### Success (200)
 
 ```json
-{}
+{
+  "field": "value"
+}
 ```
 
 ### Errors
 
-| Status Code | Description |
-|-------------|-------------|
-| 400 | Bad Request |
-| 500 | Internal Error |
+| Status | Meaning | Example |
+|--------|---------|---------|
+| 400 | Bad request | ... |
+| 401 | Unauthorized | ... |
+| 500 | Server error | ... |
+
+## Example (curl)
+
+```bash
+curl -X POST http://localhost:3264/api/endpoint \
+  -H "Content-Type: application/json" \
+  -d '{"field": "value"}'
+```
+
+## Notes
+
+- Caveats, limitations, known issues.

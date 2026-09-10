@@ -1,26 +1,32 @@
-# Guide Template
+# NN. Guide Title
 
-Use this template for new guides in the guides/ directory.
-
-## Title
-
-Brief description of what this guide covers.
+- **Status:** Active
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
 ## Prerequisites
 
-- [ ] Requirement 1
-- [ ] Requirement 2
+What the reader needs before following this guide.
+
+## Goal
+
+What the reader will achieve by the end.
 
 ## Steps
 
-1. Step one
-2. Step two
-3. Step three
+### Step 1: Title
+
+Instruction.
+
+### Step 2: Title
+
+Instruction.
 
 ## Verification
 
-How to verify the guide worked.
+How to confirm the guide worked.
 
 ## Troubleshooting
 
-Common issues and solutions.
+Common problems and solutions.

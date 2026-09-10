@@ -1,5 +1,9 @@
 # 01. API Endpoints Reference
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 ## Base URL
 
 ```

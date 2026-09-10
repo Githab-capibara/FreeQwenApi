@@ -21,7 +21,7 @@ The baseline Puppeteer setup triggers detection within minutes due to:
 We implement a multi-layer anti-bot evasion strategy:
 
 1. **Improved x5sec solver** — human-like mouse trajectory with initial pause, quadratic acceleration, micro-corrections, random pauses, and final pause before release. Jitter increased from 1.5px to 2-5px.
-2. **User-Agent rotation** — 13 variants across Windows/Mac/Linux + Chrome/Firefox/Safari, with matching Accept-Language and timezone randomization.
+2. **User-Agent rotation** — 19 variants across Windows/Mac/Linux + Chrome/Firefox/Safari, with matching Accept-Language and timezone randomization.
 3. **Fingerprint randomization** — WebGL vendor/renderer spoofing, canvas noise injection, random hardwareConcurrency (4-16 cores), random deviceMemory (4-16 GB).
 4. **Adaptive timing** — request delay multiplier increases with recent request count to mimic human pacing.
 5. **Event listener wrapping** — random micro-delays on mouse events to break deterministic timing.

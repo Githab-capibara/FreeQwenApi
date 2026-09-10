@@ -1,53 +1,34 @@
-# Security Document Template
+# NN. Security Analysis Title
 
-Use this template for new security documents in the security/ directory.
+- **Status:** Active | Resolved | Superseded by NN
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
-## Overview
+## Threat
 
-Brief description of what this security document covers.
+What is the threat or vulnerability?
 
-## Current Approach
+## Impact
 
-What security measures are currently in place.
+What is at risk?
 
-## Detected Components
+## Current State
 
-| Component | Purpose | Markers |
-|-----------|---------|---------|
-| Component name | What it does | Key identifiers |
+What protections exist today?
 
-## Problems
+## Recommendation
 
-### Problem 1: Title
+What should be done?
 
-Description of the problem with code examples if applicable.
+## Implementation
 
-### Problem 2: Title
+How to implement the fix.
 
-Description of the problem with code examples if applicable.
+## Verification
 
-## Solutions
-
-### Solution 1: Title
-
-**Implementation:**
-```javascript
-// Code example
-```
-
-### Solution 2: Title
-
-**Implementation:**
-```javascript
-// Code example
-```
-
-## Recommendations
-
-1. Start with highest ROI solution
-2. Add monitoring for effectiveness tracking
-3. Implement graceful degradation
+How to confirm the fix works.
 
 ## References
 
-Links to related documents and resources.
+- Links to CVEs, advisories, related ADRs.

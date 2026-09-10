@@ -1,24 +1,28 @@
-# Setup Guide Template
+# NN. Setup Guide Title
 
-Use this template for new setup guides in the setup/ directory.
+- **Status:** Active
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
-## Overview
+## Prerequisites
 
-What this setup guide covers.
+Required software, accounts, or keys.
 
-## Requirements
+## Step-by-step
 
-- Requirement 1
-- Requirement 2
+### Step 1: Title
 
-## Installation
+Instruction.
 
-Step-by-step installation instructions.
+### Step 2: Title
 
-## Configuration
-
-Configuration options and examples.
+Instruction.
 
 ## Verification
 
-How to verify the setup works.
+How to confirm setup succeeded.
+
+## Troubleshooting
+
+Common setup issues and fixes.

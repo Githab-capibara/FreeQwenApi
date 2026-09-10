@@ -1,8 +1,10 @@
-# Qwen Chat Model Synchronization
+# 03. Model Sync Summary
 
-Generated: 2026-06-05T13:56:59.888Z
-
-Source: prerendered model metadata from https://chat.qwen.ai/.
+- **Status:** Active
+- **Date:** 2026-06-05
+- **Deciders:** @Githab-capibara
+- **Generated:** 2026-06-05T13:56:59.888Z
+- **Source:** prerendered model metadata from https://chat.qwen.ai/
 
 ## Models Currently Visible in Qwen Chat
 

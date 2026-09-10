@@ -1,14 +1,18 @@
-# NN. Title
+# NN. FAQ Title
 
-- **Status:** Draft
+- **Status:** Active
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Overview
+## Question: ...
 
-Brief description.
+**Answer:**
 
-## Details
+Concise answer with code example if applicable.
 
-Content here.
+## Question: ...
+
+**Answer:**
+
+...

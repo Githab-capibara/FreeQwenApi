@@ -1,4 +1,8 @@
-# Models Reference
+# 02. Models Reference
+
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
 
 Complete reference for available Qwen Chat models accessible through FreeQwenApi.
 

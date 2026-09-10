@@ -9,14 +9,14 @@
 
 This repository is a fork of the original FreeQwenApi project. The fork was created to customize the project for a specific account and use case. Future maintainers need to know the fork's origin to understand any divergences from upstream, avoid confusion about which version to base changes on, and correctly attribute the work.
 
-This fork (ForgetMeAI) was created to add features such as image/video generation, improved multi-account rotation, anti-bot evasion enhancements, and integration guides for various AI agents (Hermes, Claude Code, Codex, OpenClaw, LiteLLM).
+This fork (@Githab-capibara) was created to add features such as image/video generation, improved multi-account rotation, anti-bot evasion enhancements, and integration guides for various AI agents (Hermes, Claude Code, Codex, OpenClaw, LiteLLM).
 
 ## Decision
 
 We maintain a fork information record in the architecture documentation and the root README to track the fork's provenance and any customizations made for this specific deployment. The fork lineage is documented:
 
 - **Upstream:** [FreeQwenApi](https://github.com/nicepkg/FreeQwenApi) (original by nicepkg)
-- **This fork:** [ForgetMeAI/FreeQwenApi](https://github.com/ForgetMeAI/FreeQwenApi)
+- **This fork:** [Githab-capibara/FreeQwenApi](https://github.com/Githab-capibara/FreeQwenApi)
 - **Fork date:** 2025-08-21
 - **Brand attribution:** ForgetMeAI watermark (`t.me/forgetmeai`) in README, CLI output, and health/media metadata
 

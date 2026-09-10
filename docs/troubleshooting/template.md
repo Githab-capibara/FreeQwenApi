@@ -1,27 +1,26 @@
-# Troubleshooting Document Template
+# NN. Issue Title
 
-Use this template for new troubleshooting documents in the troubleshooting/ directory.
+- **Status:** Open | Resolved
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
-## Issue
+## Symptom
 
-Brief description of the problem.
+What the user sees.
 
-## Symptoms
+## Cause
 
-What you observe when this issue occurs.
-
-## Root Cause
-
-Why this happens.
+Why it happens.
 
 ## Solution
 
-Step-by-step fix.
+How to fix it step by step.
 
 ## Prevention
 
-How to avoid this issue in the future.
+How to avoid this in the future.
 
-## Related
+## References
 
-Links to related documents.
+- Links to related issues or docs.

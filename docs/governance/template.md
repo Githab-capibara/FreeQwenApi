@@ -1,23 +1,22 @@
-# NN. Title in sentence case
+# NN. Governance Record Title
 
-- **Status:** Draft | Active | Deprecated
+- **Status:** Active | Deprecated
 - **Date:** YYYY-MM-DD
-- **Owner:** @github-handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Purpose
+## Context
 
-What this document governs and why it exists.
+What governance need does this record address?
 
-## Details
+## Decision
 
-Structured policies, procedures, or guidelines.
+What rule or principle are we establishing?
 
-## References
+## Enforcement
 
-Links to related docs.
+How is this enforced? Who is responsible?
 
-## Status
+## Changes
 
-- **Last updated:** YYYY-MM-DD
-- **Owner:** @username
+How this record can be updated or overridden.

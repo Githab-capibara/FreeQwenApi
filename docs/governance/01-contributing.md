@@ -9,7 +9,7 @@ Thanks for wanting to improve FreeQwenApi.
 
 ## Purpose
 
-Brief, actionable onboarding notes for new contributors. Full standards live in [ADR 11](../governance/04-agent-principles.md) and the root README.
+Brief, actionable onboarding notes for new contributors. Full standards live in [Agent Principles](../governance/04-agent-principles.md) and the root README.
 
 ## Details
 

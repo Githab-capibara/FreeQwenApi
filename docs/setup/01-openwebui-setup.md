@@ -1,5 +1,9 @@
 # 01. Open WebUI Setup for FreeQwenApi
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 ## 1. Connect to API
 
 ### Step 1: Administration

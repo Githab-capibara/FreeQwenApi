@@ -1,30 +1,37 @@
-# Example Document Template
+# NN. Example Title
 
-Use this template for new example documents in the examples/ directory.
-
-## Overview
-
-Brief description of what this example covers.
+- **Status:** Active
+- **Date:** YYYY-MM-DD
+- **Deciders:** GitHub handles
+- **Related:** links
 
 ## Prerequisites
 
-- [ ] FreeQwenApi server running at `http://localhost:3264/api`
-- [ ] Required dependencies installed
+- FreeQwenApi server running at `http://localhost:3264/api`
+- Runtime / language version
 
-## Basic Example
+## Source Files
+
+> All examples are in `/examples/` at the project root.
+
+## Quick Start
 
 ```bash
-# Command to run
+# run command
 ```
 
-## Advanced Usage
+## Full Example
 
-Additional configuration and options.
+```language
+// annotated code
+```
 
 ## Expected Output
 
-What the example should produce.
+```
+# what the user should see
+```
 
-## Troubleshooting
+## Variations
 
-Common issues and solutions.
+- Streaming, system message, image analysis, etc.

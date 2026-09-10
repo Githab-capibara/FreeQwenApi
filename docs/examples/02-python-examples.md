@@ -1,5 +1,9 @@
 # 02. Python Examples
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 Complete usage examples for FreeQwenApi using Python clients.
 
 > **Source files:** All examples are in `/examples/python-sdk/` and `/examples/python-direct/` at the project root.

@@ -1,14 +1,30 @@
-# NN. Title
+# NN. Release Title
 
-- **Status:** Draft
+- **Status:** Released
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Overview
+## Added
 
-Brief description.
+- New features.
 
-## Details
+## Changed
 
-Content here.
+- Changes to existing functionality.
+
+## Fixed
+
+- Bug fixes.
+
+## Removed
+
+- Removed features or deprecations.
+
+## Security
+
+- Security-relevant changes.
+
+## Migration
+
+- Breaking changes and upgrade instructions.

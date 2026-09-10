@@ -19,7 +19,7 @@ Track project releases, version history, and breaking changes for FreeQwenApi.
 - Anthropic Messages API shim for Claude Code compatibility
 - Responses API endpoint for Codex CLI
 - File upload endpoint (`POST /api/files/upload`)
-- User-Agent rotation (18 variants across Windows/Mac/Linux)
+- User-Agent rotation (19 variants across Windows/Mac/Linux)
 - x5sec slider CAPTCHA solver with human-like trajectory
 - Fingerprint randomization (WebGL, canvas, hardwareConcurrency)
 - Adaptive request timing with backoff

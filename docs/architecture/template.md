@@ -1,74 +1,29 @@
-# NN. Title
+# NN. Architecture Decision / Component Description
 
-- **Status:** Draft | Accepted
+- **Status:** Proposed | Active | Deprecated | Superseded by NN
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
-- **Related:** links to ADRs, API docs, design docs
+- **Deciders:** GitHub handles
+- **Related:** links
 
-## Overview
+## Context
 
-Brief description of the architectural component or system being documented.
+What forces are at play? What problem does this architecture component solve?
 
-## Goals
+## Decision
 
-- What this architecture aims to achieve
-- Key quality attributes (performance, reliability, extensibility)
+What are we doing? (present tense, affirmative)
 
-## Non-Goals
+## Consequences
 
-- What is explicitly out of scope for this architecture
+- **Easier:** ...
+- **Harder:** ...
+- **Given up:** ...
 
-## Architecture Diagram
+## Alternatives considered
 
-<!-- Insert or link to architecture diagram -->
-
-```
-[Diagram description or mermaid/ASCII representation]
-```
-
-## Components
-
-### Component 1
-- **Purpose:** What it does
-- **Technologies:** What it uses
-- **Interfaces:** Key APIs or contracts it exposes
-
-### Component 2
-- **Purpose:** What it does
-- **Technologies:** What it uses
-- **Interfaces:** Key APIs or contracts it exposes
-
-## Data Flow
-
-Describe how data moves through the system:
-1. Entry point →
-2. Processing stage →
-3. Output
-
-## Decisions
-
-Reference to relevant ADRs that govern these architectural choices.
-
-| ADR | Decision |
-|-----|----------|
-| [01](../adr/01-browser-proxy-architecture.md) | Use browser-based proxy |
-| [03](../adr/03-openai-compatible-shim.md) | Provide OpenAI-compatible shim |
-
-## Trade-offs
-
-| Concern | Choice | Rationale |
-|---------|--------|-----------|
-| Performance | Browser proxy | Accepts higher resource cost for anti-bot resilience |
-| Compatibility | OpenAI shim | Enables integration with existing tooling |
-| Complexity | In-process proxy | Avoids external dependency on LiteLLM |
+- **Option A:** rejected because...
+- **Option B:** rejected because...
 
 ## References
 
-- [ADR Index](../adr/README.md)
-- [API Reference](../api/README.md)
-- [Setup Guide](../setup/README.md)
-
-## Status
-
-- **Last updated:** YYYY-MM-DD
-- **Owner:** GitHub handle
+- Links to source code, ADRs, external docs.

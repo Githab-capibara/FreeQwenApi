@@ -1,5 +1,9 @@
 # 02. Image and Video Generation Guide
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 ## Overview
 
 Qwen API Proxy supports three content generation types via the `chatType` parameter:

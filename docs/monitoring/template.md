@@ -1,14 +1,44 @@
-# NN. Title
+# NN. Monitoring Guide Title
 
-- **Status:** Draft
+- **Status:** Active
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
-## Overview
+## What to Monitor
 
-Brief description.
+Key metrics and signals.
 
-## Details
+## Health Checks
 
-Content here.
+### Endpoint
+
+```
+GET /health
+```
+
+### Expected Response
+
+```json
+{"status":"ok"}
+```
+
+## Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `metric_name` | counter/gauge | ... |
+
+## Alerts
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| Alert name | condition | critical/warning |
+
+## Dashboards
+
+Links to Grafana or other dashboards.
+
+## Log Queries
+
+Useful grep / query patterns.

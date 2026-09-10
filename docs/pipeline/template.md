@@ -1,14 +1,32 @@
-# NN. Title
+# NN. Pipeline Stage Title
 
-- **Status:** Draft
+- **Status:** Active
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
 ## Overview
 
-Brief description.
+What this CI/CD pipeline stage does.
 
-## Details
+## Triggers
 
-Content here.
+When this stage runs (push, PR, tag, manual).
+
+## Steps
+
+```yaml
+# step definition
+```
+
+## Secrets / Environment
+
+Required secrets and environment variables.
+
+## Failure Handling
+
+What happens when this stage fails.
+
+## References
+
+- Links to workflow files.

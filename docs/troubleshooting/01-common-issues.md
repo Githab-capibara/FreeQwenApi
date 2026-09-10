@@ -1,5 +1,9 @@
 # 01. Common Issues and Solutions
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 This guide covers the most frequently encountered issues when running FreeQwenApi.
 
 ## Anti-Bot / CAPTCHA Issues

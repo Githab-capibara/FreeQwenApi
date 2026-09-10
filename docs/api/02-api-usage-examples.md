@@ -1,5 +1,9 @@
 # 02. API Usage Examples
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 ## cURL Examples
 
 ### Chat Completion

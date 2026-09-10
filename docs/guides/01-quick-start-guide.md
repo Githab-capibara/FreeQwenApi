@@ -1,5 +1,9 @@
 # 01. Quick Start for FreeQwenApi Demo
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 This fork is prepared for practical video and demo scenarios:
 
 - Sync current Qwen Chat model list (`qwen3.7-max`, `qwen3.7-plus`, `qwen3.6-plus`);

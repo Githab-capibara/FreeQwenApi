@@ -1,14 +1,40 @@
-# NN. Title
+# NN. Integration Title
 
-- **Status:** Draft
+- **Status:** Active | Deprecated
 - **Date:** YYYY-MM-DD
-- **Author:** GitHub handle
+- **Deciders:** GitHub handles
 - **Related:** links
 
 ## Overview
 
-Brief description.
+What this integration connects and why.
 
-## Details
+## Setup
 
-Content here.
+### Configuration
+
+```yaml
+# config example
+```
+
+### Connection
+
+How to connect.
+
+## Usage
+
+### Basic
+
+Minimal working example.
+
+### Advanced
+
+Extended features, options.
+
+## Limitations
+
+What does not work or is unsupported.
+
+## References
+
+- Links to upstream docs.

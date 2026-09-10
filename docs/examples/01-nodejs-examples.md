@@ -1,5 +1,9 @@
 # 01. Node.js Examples
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 Complete usage examples for FreeQwenApi using Node.js clients.
 
 > **Source files:** All examples are in `/examples/` at the project root.

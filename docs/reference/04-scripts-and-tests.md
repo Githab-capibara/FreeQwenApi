@@ -1,4 +1,8 @@
-# Scripts and Tests Reference
+# 04. Scripts and Tests Reference
+
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
 
 Reference documentation for CLI scripts and test suites in FreeQwenApi.
 
