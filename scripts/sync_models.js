@@ -133,14 +133,14 @@ async function main() {
   writeModelsFile(OUTPUT_FILE, merged);
   writeDocFile(DOC_FILE, discovered, merged, existing);
 
-  console.log(`Найдено моделей Qwen Chat: ${discoveredIds.length}`);
-  console.log(`Список моделей эндпоинта записан: ${merged.length} моделей -> ${OUTPUT_FILE}`);
-  console.log(`Отчёт синхронизации записан: ${DOC_FILE}`);
+  console.log(`Qwen Chat models discovered: ${discoveredIds.length}`);
+  console.log(`Endpoint model list written: ${merged.length} models -> ${OUTPUT_FILE}`);
+  console.log(`Model sync report written: ${DOC_FILE}`);
   const added = discoveredIds.filter(id => !existing.includes(id));
-  if (added.length) console.log(`Новые модели: ${added.join(', ')}`);
+  if (added.length) console.log(`New models: ${added.join(', ')}`);
 }
 
 main().catch(error => {
-  console.error(`Синхронизация моделей не удалась: ${error.message}`);
+  console.error(`Model sync failed: ${error.message}`);
   process.exit(1);
 });

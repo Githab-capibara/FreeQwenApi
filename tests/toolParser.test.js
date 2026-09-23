@@ -58,8 +58,9 @@ test('parseToolCallJson narrowly repairs missing opening tool wrapper when closi
   assert.deepEqual(simplify(calls), [{ name: 'terminal', args: { command: 'pwd' }, index: 0 }]);
 });
 
-test('parseToolCallJson returns null for bare invoke outside wrapper', () => {
-  assert.equal(parseToolCallJson('<invoke name="terminal"><parameter name="command">pwd</parameter></invoke>'), null);
+test('parseToolCallJson accepts bare invoke outside wrapper as a fallback', () => {
+  const calls = parseToolCallJson('<invoke name="terminal"><parameter name="command">pwd</parameter></invoke>');
+  assert.deepEqual(simplify(calls), [{ name: 'terminal', args: { command: 'pwd' }, index: 0 }]);
 });
 
 test('parseToolCallJson does not turn malformed complete wrapper into tool call', () => {

@@ -21,7 +21,14 @@ Complete reference for all `.env` configuration options in FreeQwenApi.
 | `NON_INTERACTIVE` | `1` | Skip interactive account menu. Use for agents, Docker, systemd/launchd. |
 | `SKIP_ACCOUNT_MENU` | `1` | Same as `NON_INTERACTIVE`. |
 | `DEFAULT_MODEL` | `qwen3.7-max` | Default model when client does not specify one. |
+
+## Logging
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `LOG_LEVEL` | `info` | Logging verbosity: `error`, `warn`, `info`, `debug`. |
+| `LOG_MAX_SIZE` | `5242880` | Maximum size of a single log file before rotation, in bytes (5 MB). |
+| `LOG_MAX_FILES` | `5` | Number of rotated log files kept in `LOGS_DIR`. |
 
 ## Qwen Chat / Browser Identity
 
@@ -33,6 +40,33 @@ Complete reference for all `.env` configuration options in FreeQwenApi.
 | `VIEWPORT_WIDTH` | `1920` | Browser viewport width for fingerprint. |
 | `VIEWPORT_HEIGHT` | `1080` | Browser viewport height for fingerprint. |
 | `USER_AGENT` | Chrome/Windows UA | Browser user agent string. |
+| `CHROME_PROFILE_DIR` | `/tmp/freeqwen-chrome-profile` | Profile directory for the runtime Chromium instance. |
+| `CHROME_AUTH_PROFILE_DIR` | `/tmp/freeqwen-auth-profile` | Profile directory used only during interactive login (`npm run auth`). |
+
+## Concurrency / Anti-bot Timing
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GLOBAL_REQUEST_CONCURRENCY` | `1` | Max concurrent upstream requests across all accounts. Keep at `1` unless you know your rate-limit headroom. |
+| `ACCOUNT_CONCURRENCY` | `1` | Max concurrent requests within one account. Defaults to `GLOBAL_REQUEST_CONCURRENCY`. Stays `1` to avoid Qwen burst detection. |
+| `REQUEST_JITTER_MIN_MS` | `800` | Minimum random delay added before each upstream request. |
+| `REQUEST_JITTER_MAX_MS` | `2500` | Maximum random delay added before each upstream request. |
+| `ANTI_BOT_COOLDOWN_MS` | `120000` | Cooldown applied after an anti-bot challenge (e.g. slider CAPTCHA), in milliseconds. |
+| `QWEN_SLOT_WAIT_MS` | `45000` | How long to wait for a rate-limited account slot to free up before failing the request. |
+
+## Qwen Endpoint Overrides (advanced)
+
+> Override the individual Qwen Chat HTTP endpoints if the upstream protocol changes. Derived from `QWEN_BASE_URL` unless set explicitly.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CHAT_API_URL` | `${QWEN_BASE_URL}/api/v2/chat/completions` | Chat completions upstream endpoint. |
+| `CREATE_CHAT_URL` | `${QWEN_BASE_URL}/api/v2/chats/new` | Endpoint used to create a new chat session. |
+| `CHAT_PAGE_URL` | `${QWEN_BASE_URL}/` | Base Qwen Chat page URL opened by the browser. |
+| `TASK_STATUS_URL` | `${QWEN_BASE_URL}/api/v1/tasks/status` | Video/media task polling endpoint. |
+| `STS_TOKEN_API_URL` | `${QWEN_BASE_URL}/api/v1/files/getstsToken` | STS token endpoint used by the file upload flow. |
+| `AUTH_SIGNIN_URL` | `${QWEN_BASE_URL}/auth?action=signin` | Sign-in page URL used during interactive login. |
+| `OSS_SDK_URL` | `https://gosspublic.alicdn.com/aliyun-oss-sdk-6.20.0.min.js` | Aliyun OSS SDK loaded in-page for direct file uploads. |
 
 ## Agent Compatibility / Tool-Use
 
@@ -63,6 +97,7 @@ Complete reference for all `.env` configuration options in FreeQwenApi.
 | `SESSION_DIR` | `session` | Directory for saved account sessions and tokens. |
 | `UPLOADS_DIR` | `uploads` | Directory for uploaded files. |
 | `LOGS_DIR` | `logs` | Directory for server logs. |
+| `PROXY_LIST_FILE` | `proxies.txt` (in cwd) | Path to a newline-separated proxy list used by `src/browser/proxyManager.js`. Unset disables file-based proxy rotation. |
 
 ## Media / Optional Official APIs
 

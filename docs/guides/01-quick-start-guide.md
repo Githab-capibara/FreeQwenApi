@@ -6,7 +6,7 @@
 
 This fork is prepared for practical video and demo scenarios:
 
-- Sync current Qwen Chat model list (`qwen3.7-max`, `qwen3.7-plus`, `qwen3.6-plus`);
+- Sync current Qwen Chat model list (`qwen3.8-max`, `qwen3.7-max`, `qwen3.7-plus`, `qwen3.6-plus`);
 - Local OpenAI-compatible endpoint for SDK, Hermes Agent, Open WebUI, and LiteLLM;
 - Quick smoke test to verify the proxy is alive before recording.
 

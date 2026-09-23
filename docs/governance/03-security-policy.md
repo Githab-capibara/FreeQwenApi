@@ -7,6 +7,8 @@
 
 ## Purpose
 
+Defines how security vulnerabilities in FreeQwenApi are reported, triaged, and fixed. It documents which versions are supported and which issue classes are in scope for the project's own code vs. the upstream Qwen Chat service it mediates.
+
 ## Supported Versions
 
 FreeQwenApi is a personal/community proxy project. Security fixes are applied

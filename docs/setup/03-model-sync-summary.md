@@ -1,9 +1,10 @@
 # 03. Model Sync Summary
 
 - **Status:** Active
-- **Date:** 2026-06-05
+- **Date:** 2026-09-22
 - **Deciders:** @Githab-capibara
 - **Generated:** 2026-06-05T13:56:59.888Z
+- **Reconciled:** 2026-09-22 against `src/AvailableModels.txt`
 - **Source:** prerendered model metadata from https://chat.qwen.ai/
 
 ## Models Currently Visible in Qwen Chat
@@ -14,7 +15,8 @@
 
 ## Added by Last Sync
 
-- No new models.
+- No new models were added by the 2026-06-05 sync.
+- `qwen3.8-max` is present in `src/AvailableModels.txt` from a later sync run; it is not yet categorized against the landing-metadata list below (run `npm run models:sync` to refresh this document).
 
 ## Endpoint Models Not in Current Qwen Chat Landing Metadata
 
@@ -46,6 +48,7 @@
 
 ## Final Combined Endpoint Model List
 
+- `qwen3.8-max`
 - `qwen3.7-plus`
 - `qwen3.7-max`
 - `qwen3.6-plus`

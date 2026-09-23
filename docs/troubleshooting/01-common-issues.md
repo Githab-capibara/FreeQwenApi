@@ -58,6 +58,25 @@ This guide covers the most frequently encountered issues when running FreeQwenAp
    ```
 3. Restart the server to clear stuck browser sessions.
 
+### Symptom: Qwen page opens but the UI never loads (all CDN resources show `net::ERR_INVALID_ARGUMENT`)
+
+**Examples in logs:**
+```
+[BLOCKED] script: https://assets.alicdn.com/g/qwenweb/qwen-chat-fe/0.2.91/js/main.js - net::ERR_INVALID_ARGUMENT
+[BLOCKED] stylesheet: https://assets.alicdn.com/g/qwenweb/qwen-chat-fe/0.2.91/css/main.css - net::ERR_INVALID_ARGUMENT
+```
+
+**Root Cause:** Overriding the `Sec-Fetch-*` headers (`Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `Sec-Fetch-Site`, `Sec-Fetch-User`) via `page.setExtraHTTPHeaders()`. These headers are managed by Chromium itself; starting around Chromium 148, forcing them onto every subresource breaks the fetch-metadata validation in the network service, so every JS/CSS request fails before the request is even sent. The main HTML frame loads, but the SPA renders nothing.
+
+**Solution:** If you use a patched/older copy, remove the `Sec-Fetch-*` entries from the `setExtraHTTPHeaders()` block in `src/browser/browser.js`. Current source keeps only `Accept-Language` and `Accept` — Chromium sets the rest itself. You can verify quickly:
+
+```bash
+# should print invalid=0 and show the Qwen UI
+node /tmp/probe_fixed2.mjs
+```
+
+To confirm from a patch: re-run `npm run auth -- --add` — the Qwen page must render its login UI.
+
 ---
 
 ## Rate Limiting Issues

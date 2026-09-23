@@ -15,7 +15,8 @@ This fork (@Githab-capibara) was created to add features such as image/video gen
 
 We maintain a fork information record in the architecture documentation and the root README to track the fork's provenance and any customizations made for this specific deployment. The fork lineage is documented:
 
-- **Upstream:** [FreeQwenApi](https://github.com/nicepkg/FreeQwenApi) (original by nicepkg)
+- **Original (upstream of the chain):** [FreeQwenApi](https://github.com/nicepkg/FreeQwenApi) — original project by nicepkg
+- **Direct upstream remote:** [ForgetMeAI/FreeQwenApi](https://github.com/ForgetMeAI/FreeQwenApi) — the `upstream` remote configured in this repo (`git remote -v`)
 - **This fork:** [Githab-capibara/FreeQwenApi](https://github.com/Githab-capibara/FreeQwenApi)
 - **Fork date:** 2025-08-21
 - **Brand attribution:** ForgetMeAI watermark (`t.me/forgetmeai`) in README, CLI output, and health/media metadata

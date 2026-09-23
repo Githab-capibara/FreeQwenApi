@@ -6,6 +6,23 @@
 
 Reference documentation for key internal modules in FreeQwenApi.
 
+## Core Configuration
+
+### config.js — Central Configuration
+
+Single source of truth for every tunable value. Reads environment variables once at import time, applies defaults, and exports frozen constants consumed by the rest of the codebase (`import { PORT } from './config.js'`).
+
+**Key exports:**
+- Endpoint overrides — `CHAT_API_URL`, `CREATE_CHAT_URL`, `CHAT_PAGE_URL`, `TASK_STATUS_URL`, `STS_TOKEN_API_URL`, `AUTH_SIGNIN_URL`, `OSS_SDK_URL`
+- Timeouts — `PAGE_TIMEOUT`, `PROTOCOL_TIMEOUT`, `AUTH_TIMEOUT`, `NAVIGATION_TIMEOUT`, `RETRY_DELAY`, `ANTI_BOT_COOLDOWN_MS`
+- Concurrency / pacing — `PAGE_POOL_SIZE`, `GLOBAL_REQUEST_CONCURRENCY`, `ACCOUNT_CONCURRENCY`, `REQUEST_JITTER_MIN_MS`, `REQUEST_JITTER_MAX_MS`
+- Server — `HOST`, `PORT`, `DEFAULT_MODEL`, `LOG_LEVEL`
+- Paths — `SESSION_DIR`, `UPLOADS_DIR`, `LOGS_DIR`
+
+**Note:** `config.js` is the intended single source of truth, but a few modules still read `process.env` directly (`chat.js` → `QWEN_SLOT_WAIT_MS`, `proxyManager.js` → `PROXY_LIST_FILE`, `routes.js` → `DASHSCOPE_API_KEY`). Prefer routing new knobs through `config.js`, and document every variable in [`01-environment-variables.md`](01-environment-variables.md).
+
+---
+
 ## API Modules
 
 ### chatHistory.js — Chat History Management
@@ -85,6 +102,19 @@ Manages per-account request queuing with scoped conversation aliases.
 - Prevents conversation state mixing between different clients
 - Ensures account-resource affinity in multi-account setups
 - Provides deterministic chat ID generation for session restoration
+
+---
+
+### accountAffinity.js — Resource-to-Account Binding
+
+Binds resources (chat IDs, file IDs) to a specific account so that a follow-up request lands on the account that owns the state. Complements `tokenManager.js` round-robin rotation: rotation picks a fresh account for new conversations, affinity keeps existing conversations pinned.
+
+**Key functions:**
+- `snapshotAccountToken(tokenObj)` — returns a frozen `{ id, token }` snapshot or `null`
+- `createAccountAffinityRegistry({ maxEntries = 10000 })` — LRU-bounded `Map` with `bind` / `get` / `forget`; refuses to re-bind a resource to a different account
+- `resolveChatRequestContext({ chatId, parentId, affinityRegistry, getAccountToken, selectToken })` — resolves which account + token a chat request must use; returns `reusedChat: true` when affinity held, otherwise selects a new token and reports `resetReason`
+
+**Why it matters:** without affinity, round-robin would route a follow-up message to an account that has no history for that `chatId`, and Qwen would answer with `chatId does not exist` or an empty response.
 
 ---
 
@@ -183,6 +213,43 @@ Manages multi-account token rotation.
 
 ---
 
+### chat.js — Upstream Qwen Chat Client
+
+The core request layer: builds Qwen Chat requests, drives the browser (or Node fetch), streams responses, and handles anti-bot recovery. Consumed by `routes.js`.
+
+**Key exports:**
+- `sendMessage(message, model, chatId, parentId, files, tools, toolChoice, systemMessage, chatType, size, waitForCompletion, retryCount, onChunk, resetMessage, clientScope, forceBrowserFetch)` — main entry point; handles account selection, request build, streaming, and retries
+- `getAllModels()` / `isValidModel(model)` / `getAvailableModelsFromFile()` — model list from `src/AvailableModels.txt`
+- `getApiKeys()` / `extractAuthToken()` — client-key and upstream auth handling
+- `pagePool` — Puppeteer page pool shared across requests (`PAGE_POOL_SIZE`)
+- `pollTaskStatus()` / `pollQwenTaskStatus()` — image/video task polling
+- `selectRequestAccount()` / `retryAfterAccountSwitch()` — account selection and account-switch retry on rate limits
+- `preflightFileRequest()` / `resolveFileAccountId()` — keeps file attachments on the owning account
+- `isQwenAntiBotBody()` — detects Qwen anti-bot challenge responses
+
+**Env read directly:** `QWEN_SLOT_WAIT_MS`.
+
+---
+
+### routes.js — Express API Router
+
+Defines every HTTP endpoint exposed under `/api` (mounted in `index.js` as `app.use('/api', apiRoutes)`). Thin layer: parses the request, delegates to `chat.js` / `imageGeneration.js` / `tokenManager.js`, and shapes the OpenAI/Anthropic/Responses-compatible response.
+
+**Notable route groups:**
+- Chat: `/chat/completions`, `/v1/chat/completions`, `/chat`, `/chats`, `/chats/:chatId/history`
+- Anthropic shim: `/messages`, `/v1/messages`
+- Responses API: `/responses`
+- Models: `/models`, `/v1/models`, `/models/:model`
+- Media: `/images/generations`, `/images/models`, `/images/status`, `/videos/generations`, `/videos/models`, `/videos/status`, `/tasks/status/:taskId`
+- Files: `/files/upload`, `/files/getstsToken`
+- Ops: `/`, `/health`, `/status` (exposed externally as `/api`, `/api/health`, `/api/status`), plus `POST /show` and `POST /api/show` aliases (exposed as `/api/show` and `/api/api/show`)
+
+**Export:** `export default router` (line 2790).
+
+**Env read directly:** `DASHSCOPE_API_KEY`.
+
+---
+
 ## Browser Modules
 
 ### proxyManager.js — Proxy Rotation
@@ -258,6 +325,21 @@ Main browser lifecycle management.
 - WebDriver masking
 - Fingerprint randomization
 - User-Agent rotation
+
+**Header overrides:** the page-level `setExtraHTTPHeaders()` sets only `Accept-Language` and `Accept`. Do **not** add `Sec-Fetch-*` headers there: as of Chromium ~148 overriding them makes every subresource fail with `net::ERR_INVALID_ARGUMENT` (see [Troubleshooting — UI never loads](../troubleshooting/01-common-issues.md)).
+
+---
+
+### auth.js — Interactive Authentication
+
+Qwen Chat sign-in helpers. Used indirectly by `npm run auth`: `browser.js` calls `startManualAuthentication()` to open the sign-in page, while `chat.js` / `routes.js` call `checkAuthentication()` / `checkVerification()` at runtime to detect expired or challenged sessions.
+
+**Key functions:**
+- `checkAuthentication(context)` — determines whether the current browser context is authenticated
+- `startManualAuthentication(context, skipRestart = false)` — opens the Qwen sign-in page and waits for the user to complete login in the visible browser
+- `checkVerification(page)` — detects a pending verification/challenge screen during login
+
+**Storage:** successful logins are persisted by [`session.js`](#sessionjs--session-management) under `SESSION_DIR`.
 
 ---
 

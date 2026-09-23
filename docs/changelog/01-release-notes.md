@@ -2,13 +2,23 @@
 
 - **Status:** Active
 - **Date:** 2026-08-24
-- **Owner:** @Githab-capibara
+- **Deciders:** @Githab-capibara
 
 ## Purpose
 
 Track project releases, version history, and breaking changes for FreeQwenApi.
 
 ## Changelog
+
+### v1.1.1 – 2026-09-13 (fix)
+
+**Bug fixes:**
+- Fix Qwen page loading blank on Chromium ~148+: removed the `Sec-Fetch-*` header override from `page.setExtraHTTPHeaders()` in `src/browser/browser.js`. Forcing these browser-managed headers made the network service reject every subresource (`net::ERR_INVALID_ARGUMENT`), so the SPA UI never rendered during login/runtime.
+- Keep only `Accept-Language` and `Accept`; Chromium sets the remaining request headers itself.
+
+**Documentation:**
+- [Common Issues](../troubleshooting/01-common-issues.md): new section for the blank-page/`ERR_INVALID_ARGUMENT` symptom.
+- [Internal Modules](../reference/03-internal-modules.md): header-override warning for `browser.js`.
 
 ### v1.1.0 – 2026-08-27 (current)
 
@@ -56,4 +66,4 @@ Track project releases, version history, and breaking changes for FreeQwenApi.
 ## Status
 
 - **Last updated:** 2026-08-27
-- **Owner:** @Githab-capibara
+- **Deciders:** @Githab-capibara

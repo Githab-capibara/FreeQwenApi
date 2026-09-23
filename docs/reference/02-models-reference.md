@@ -12,7 +12,8 @@ Complete reference for available Qwen Chat models accessible through FreeQwenApi
 
 | Model | Best For | Context Window | Notes |
 |-------|----------|----------------|-------|
-| `qwen3.7-max` | Regular chat, agents, tool-use | 256K | Best overall quality |
+| `qwen3.8-max` | Regular chat, agents, tool-use | 256K | Newest flagship, best overall quality |
+| `qwen3.7-max` | Regular chat, agents, tool-use | 256K | Best quality on stable line |
 | `qwen3.7-plus` | Faster, lighter workloads | 256K | Good speed/quality balance |
 | `qwen3-coder-plus` | Coding tasks | 256K | Optimized for code generation |
 | `qwen3-vl-plus` | Image and video generation | 32K | Vision-language model |

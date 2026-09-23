@@ -1,5 +1,9 @@
 # 05. Python Entrypoint Reference
 
+- **Status:** Active
+- **Date:** 2026-08-25
+- **Deciders:** @Githab-capibara
+
 Reference for the Python server entrypoint (`main.py`) and its account-affinity helpers (`python_affinity.py`) — an alternative to the Node.js entrypoint (`index.js`).
 
 ## Overview
@@ -68,4 +72,4 @@ Tests: `tests/test_python_affinity.py`, `tests/test_python_main_affinity.py`.
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @Githab-capibara
+- **Deciders:** @Githab-capibara

@@ -9,12 +9,12 @@ Write an ADR when the answer to "why is the code shaped this way?" needs to be a
 ## Index
 
 | # | Title | Date | Status |
-|---|-------|--------|
+|---|-------|--------|--------|
 | [01](01-browser-proxy-architecture.md) | Use browser-based proxy architecture | 2025-08-09 | Accepted |
-| [02](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | 2025-08-21 | Accepted |
-| [03](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | 2025-08-21 | Accepted |
-| [04](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | 2026-08-21 | Accepted |
-| [05](05-fork-information.md) | Document fork information | 2025-08-21 | Accepted |
+| [02](02-multi-account-rotation.md) | Implement multi-account round-robin rotation | 2025-08-09 | Accepted |
+| [03](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | 2025-08-09 | Accepted |
+| [04](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | 2025-08-09 | Accepted |
+| [05](05-fork-information.md) | Record fork provenance | 2025-08-21 | Accepted |
 
 Keep this index in sync when you land a new ADR.
 
@@ -36,5 +36,5 @@ Use [`template.md`](template.md) as the starting point for new ADRs.
 ## Lifecycle
 
 - Numbered sequentially, two digits, never renumbered: `01-...`, `02-...`.
-- File name kebab-case, derived from the title.
+- File name kebab-case, a concise noun phrase derived from the title (2–3 words where possible, e.g. `07-c2-framework-selection.md`).
 - Append-only. To change a decision, write a new ADR that supersedes the old one.

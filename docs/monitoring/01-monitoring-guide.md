@@ -2,7 +2,7 @@
 
 - **Status:** Active
 - **Date:** 2026-08-25
-- **Owner:** @Githab-capibara
+- **Deciders:** @Githab-capibara
 
 ## Purpose
 
@@ -28,8 +28,9 @@ Observability is built from three parts: Winston-based application logging to `l
 {
   "ok": true,
   "service": "FreeQwenApi",
+  "watermark": false,
   "baseUrl": "/api",
-  "models": 28,
+  "models": 29,
   "accounts": { "total": 3, "available": 2, "invalid": 0, "waiting": 1 },
   "timestamp": "2026-08-25T12:00:00.000Z"
 }
@@ -66,4 +67,4 @@ Winston with custom levels: `error` → `warn` → `info` → `http` → `debug`
 ## Status
 
 - **Last updated:** 2026-08-25
-- **Owner:** @Githab-capibara
+- **Deciders:** @Githab-capibara

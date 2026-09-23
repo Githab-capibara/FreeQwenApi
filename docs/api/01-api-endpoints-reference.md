@@ -31,17 +31,26 @@ Root info handle.
 
 Check server health and get basic info.
 
-**Response:**
+**Response (from `src/api/routes.js`):**
 ```json
 {
   "ok": true,
   "service": "FreeQwenApi",
-  "watermark": "t.me/forgetmeai",
+  "watermark": false,
   "baseUrl": "/api",
-  "models": 28,
-  "accounts": 3
+  "models": 29,
+  "accounts": {
+    "total": 3,
+    "available": 2,
+    "invalid": 0,
+    "waiting": 1
+  },
+  "timestamp": "2026-09-22T12:34:56.789Z"
 }
 ```
+
+- `models` — number of entries in `src/AvailableModels.txt`.
+- `accounts.total` / `available` / `invalid` / `waiting` — aggregated token states; `ok` is `true` when at least one account is available.
 
 ### GET /api/status
 
@@ -316,7 +325,7 @@ Generate images via Qwen Chat or DashScope.
 ```json
 {
   "created": 1770000000,
-  "watermark": "t.me/forgetmeai",
+  "watermark": false,
   "provider": "qwen-chat",
   "model": "qwen-image-plus",
   "data": [
@@ -332,11 +341,21 @@ Check image generation API status.
 **Response:**
 ```json
 {
-  "available": true,
-  "apiKeyConfigured": true,
-  "message": "Image generation API is available"
+  "watermark": false,
+  "qwenChat": {
+    "available": true,
+    "model": "qwen3-vl-plus",
+    "message": "Qwen Chat image generation available"
+  },
+  "dashscope": {
+    "available": true,
+    "apiKeyConfigured": true,
+    "message": "DashScope image generation API available"
+  }
 }
 ```
+
+The `message` strings are returned localized by the server; the field shape above is what you can rely on.
 
 ### GET /api/images/models
 
@@ -396,6 +415,46 @@ Poll video generation task status.
 }
 ```
 
+### GET /api/videos/models
+
+Get available video generation models (from `src/api/routes.js`).
+
+**Response:**
+```json
+{
+  "object": "list",
+  "watermark": false,
+  "data": [
+    {
+      "id": "qwen3-vl-plus",
+      "object": "model",
+      "created": 1770000000,
+      "owned_by": "qwen-chat",
+      "permission": [],
+      "capability": "qwen_chat_video_generation",
+      "provider": "qwen-chat"
+    }
+  ]
+}
+```
+
+### GET /api/videos/status
+
+Check video generation readiness.
+
+**Response:**
+```json
+{
+  "watermark": false,
+  "available": true,
+  "model": "qwen3-vl-plus",
+  "accounts": { "total": 3, "available": 2 },
+  "message": "Qwen Chat video generation available"
+}
+```
+
+The `message` string is returned localized by the server.
+
 ---
 
 ## File Upload
@@ -440,23 +499,21 @@ Upload files for Qwen analysis.
 
 ---
 
-## Account Management
+## Account Management (CLI)
 
-### POST /api/accounts/add
+There are **no HTTP endpoints** for account management. Accounts are managed
+interactively or non-interactively through the CLI runner `scripts/auth.js`:
 
-Add new Qwen Chat account.
+| Command | Action |
+|---------|--------|
+| `npm run auth` | Interactive account menu |
+| `npm run auth -- --add` | Add a new Qwen Chat account |
+| `npm run auth -- --list` | List configured accounts |
+| `npm run auth -- --relogin` | Re-authenticate a login that expired |
+| `npm run auth -- --remove` | Remove an account |
+| `node scripts/addAccount.js` | Add an account non-interactively |
 
-### GET /api/accounts/list
-
-List all configured accounts.
-
-### POST /api/accounts/remove
-
-Remove an account.
-
-### POST /api/accounts/relogin
-
-Re-authenticate an account.
+See [Scripts and Tests Reference](../reference/04-scripts-and-tests.md) for the full CLI reference.
 
 ---
 

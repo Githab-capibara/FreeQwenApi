@@ -161,16 +161,14 @@ export async function initBrowser(visibleMode = true, skipManualRestart = false,
             deviceScaleFactor: randomDPI
         });
 
+        // ВАЖНО: не подменяйте Sec-Fetch-* заголовки. Начиная с Chromium ~148 их
+        // принудительная перезапись через setExtraHTTPHeaders ломает загрузку всех
+        // подресурсов: каждый запрос получает net::ERR_INVALID_ARGUMENT в сетевом
+        // сервисе, и страница остаётся без JS/CSS. Chromium сам выставляет эти
+        // security-заголовки корректно для каждого запроса.
         await page.setExtraHTTPHeaders({
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1'
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
         });
 
         // Отключаем CSP чтобы скрипты загружались без блокировки
