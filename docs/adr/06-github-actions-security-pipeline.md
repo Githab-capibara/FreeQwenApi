@@ -85,13 +85,29 @@ real regression. The drift is not hypothetical: between two runs of the same
 commit, the `:latest` tag of the Bearer image changed the finding set, which
 would have been read as a silent removal of a finding.
 
-Two decisions deserve their own justification.
+The scan also has to describe the same tree in a local checkout and on the
+runner. Bearer analyses the dependency tree, and TruffleHog scans the working
+tree, so both produced a different result in a developer checkout than in the
+runner. The pipeline and the baseline generator therefore exclude the
+dependency tree and the local build artifacts in exactly the same way, and the
+workflow policy tests assert that the two definitions cannot drift apart.
+
+Three decisions deserve their own justification.
 
 **The OpenAPI contract becomes a first-class artifact.** The contract in
 `openapi/openapi.yaml` is the single source of truth for the API surface. It
 is linted by Redocly and Spectral, compared against the base reference by
 oasdiff, fuzzed against a running instance by Schemathesis and reconciled with
 the actual router by `scripts/ci/verify-api-contract-parity.sh`.
+
+**The dynamic scan runs against the release image.** The proxy automates a
+browser. The runner image carries no browser that Puppeteer can drive, while
+the release image carries the Chromium build that the proxy expects, so the
+API job builds the image and runs the server from it. The client key is
+mounted read-only and the fake account is written into a writable directory
+inside the container, so neither becomes part of a layer. The scan therefore
+exercises the runtime, the dependency tree and the browser of the release
+rather than an approximation of them.
 
 **The DAST scan runs through a bearer-injecting proxy.** OWASP ZAP derives
 its requests from the OpenAPI document. The document contains no
@@ -124,12 +140,14 @@ for a finding that has a fix.
   remembering to look; the accepted security debt is explicit, reviewable and
   measurable.
 - **Harder:** the pipeline takes time on every push and consumes runner
-  minutes; the baselines must be maintained when a scanner changes its
-  output format or when a dependency is upgraded; every scanner image has to
-  be re-pinned by hand when a new version is wanted, and the affected
-  baseline has to be regenerated and reviewed; the ten-area matrix and the
-  workflow policy tests add maintenance surface of their own; the DAST scope
-  has to be revisited if the upstream-dependent endpoints become testable.
+  minutes; the API job builds the release image as well, which duplicates
+  work that the container job already does; the baselines must be maintained
+  when a scanner changes its output format or when a dependency is upgraded;
+  every scanner image has to be re-pinned by hand when a new version is
+  wanted, and the affected baseline has to be regenerated and reviewed; the
+  ten-area matrix and the workflow policy tests add maintenance surface of
+  their own; the DAST scope has to be revisited if the upstream-dependent
+  endpoints become testable.
 - **Given up:** the freedom to introduce findings without an immediate red
   build, and the "everything is fine" default that the absence of a runner
   provided. We also give up the simplicity of a single flat workflow: the

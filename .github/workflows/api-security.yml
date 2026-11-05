@@ -103,6 +103,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Build the image under test
+        run: |
+          set -euo pipefail
+          # The dynamic scan runs against the image that ships. The runner
+          # image has no browser that Puppeteer can drive, while the release
+          # image carries the Chromium build that the proxy automates.
+          docker build -t qwen-api-proxy:ci .
+
       - name: Start mock upstream and API server
         run: |
           set -euo pipefail
@@ -115,21 +123,28 @@ jobs:
             >/tmp/mock-upstream.log 2>&1 &
           echo "${!}" > /tmp/mock-upstream.pid
 
-          # Fake account + client key so the server can start in CI.
-          mkdir -p session
-          printf '[{"id":"ci-account","token":"ci-placeholder-token","resetAt":null,"invalid":false}]\n' \
-            > session/tokens.json
-          printf 'ci-placeholder-key\n' > src/Authorization.txt
+          # The client key is mounted read-only. The image never carries it,
+          # and the file is a placeholder, not a credential.
+          mkdir -p /tmp/ci-src
+          printf 'ci-placeholder-key\n' > /tmp/ci-src/Authorization.txt
 
-          NON_INTERACTIVE=1 \
-          SKIP_ACCOUNT_MENU=1 \
-          CHROME_PATH="$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)" \
-          CHROME_PROFILE_DIR="${RUNNER_TEMP}/freeqwen-chrome-profile" \
-          PORT="${API_PORT}" \
-          HOST=127.0.0.1 \
-          QWEN_BASE_URL="http://127.0.0.1:${MOCK_PORT}" \
-            node index.js > /tmp/api-server.log 2>&1 &
-          echo "${!}" > /tmp/api-server.pid
+          # The server runs from the image, so the browser, the runtime and
+          # the dependency tree are exactly the ones of the release. The fake
+          # account is written into a writable directory inside the container
+          # and never becomes part of a layer.
+          docker run --rm -d --name qwen-api-proxy-ci \
+            --network host \
+            -v /tmp/ci-src/Authorization.txt:/app/src/Authorization.txt:ro \
+            -e SESSION_DIR=/tmp/session \
+            -e LOGS_DIR=/tmp/logs \
+            -e UPLOADS_DIR=/tmp/uploads \
+            -e QWEN_BASE_URL="http://127.0.0.1:${MOCK_PORT}" \
+            -e PORT="${API_PORT}" \
+            -e HOST=0.0.0.0 \
+            -e NON_INTERACTIVE=1 \
+            -e SKIP_ACCOUNT_MENU=1 \
+            qwen-api-proxy:ci \
+            sh -c 'mkdir -p /tmp/session && printf "%s\n" "[{\"id\":\"ci-account\",\"token\":\"ci-placeholder-token\",\"resetAt\":null,\"invalid\":false}]" > /tmp/session/tokens.json && exec node index.js'
 
           # Wait for readiness.
           for _ in $(seq 1 60); do
@@ -140,13 +155,13 @@ jobs:
             sleep 2
           done
           echo "::error::API server did not become ready in time"
-          cat /tmp/api-server.log || true
+          docker logs qwen-api-proxy-ci || true
           exit 1
 
       - name: Upload server log on failure
         if: failure()
         run: |
-          cat /tmp/api-server.log || true
+          docker logs qwen-api-proxy-ci || true
           cat /tmp/mock-upstream.log || true
 
       - name: Verify authentication enforcement
@@ -249,6 +264,6 @@ jobs:
       - name: Stop servers
         if: always()
         run: |
+          docker rm -f qwen-api-proxy-ci >/dev/null 2>&1 || true
           kill "$(cat /tmp/auth-proxy.pid 2>/dev/null || echo 0)" 2>/dev/null || true
-          kill "$(cat /tmp/api-server.pid 2>/dev/null || echo 0)" 2>/dev/null || true
           kill "$(cat /tmp/mock-upstream.pid 2>/dev/null || echo 0)" 2>/dev/null || true

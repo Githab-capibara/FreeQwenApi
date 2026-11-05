@@ -91,12 +91,17 @@ jobs:
         run: |
           set -euo pipefail
           source .github/scanner-images.env
+          # The scan has to cover the complete history, so it starts at the
+          # root commit. A placeholder hash does not resolve and makes the
+          # scanner report an error instead of a result.
+          ROOT_COMMIT="$(git rev-list --max-parents=0 HEAD | tail -1)"
+          echo "Scanning the history from ${ROOT_COMMIT}"
           docker run --rm \
             -v "${PWD}:/repo" \
             -w /repo \
             "${TRUFFLEHOG_IMAGE}" \
             git "file:///repo" \
-            --since-commit "${BASE_SHA:-0000000000000000000000000000000000000000}" \
+            --since-commit "${ROOT_COMMIT}" \
             --only-verified \
             --fail \
             --no-update \
@@ -107,14 +112,16 @@ jobs:
         run: |
           set -euo pipefail
           source .github/scanner-images.env
+          # The exclusion list keeps the local build artifacts and the
+          # dependency tree out of the result, so a local run and a CI run
+          # describe the same tree.
           docker run --rm \
             -v "${PWD}:/repo" \
             -w /repo \
             "${TRUFFLEHOG_IMAGE}" \
             filesystem /repo \
             --no-verification \
-            --exclude-paths /repo/node_modules \
-            --exclude-paths /repo/.git \
+            --exclude-paths /repo/scripts/ci/trufflehog-exclude-paths.txt \
             --fail \
             --no-update \
             --json
@@ -219,6 +226,7 @@ jobs:
             --report security \
             --severity critical,high \
             --format json \
+            --skip-path node_modules \
             . > security-report-bearer.json; then
             echo "::notice title=Bearer::scanner reported findings; the baseline comparison decides"
           fi
@@ -299,6 +307,18 @@ jobs:
         uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
         with:
           persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Checkov
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir checkov==3.4.0
+          checkov --version
 
       - name: Hadolint — Dockerfile lint
         run: |

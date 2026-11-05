@@ -71,7 +71,9 @@ jq -r '(.nodejs // {}), (.templates // {})
 
 echo "==> Bearer"
 docker run --rm -v "${ROOT}:/repo" -w /repo "${BEARER_IMAGE}" \
-  scan --report security --severity critical,high --format json . \
+  scan --report security --severity critical,high --format json \
+  --skip-path node_modules \
+  . \
   > "${REPORT_DIR}/bearer.json" 2>/dev/null || true
 jq -r '(.critical // []), (.high // [])
       | .[]

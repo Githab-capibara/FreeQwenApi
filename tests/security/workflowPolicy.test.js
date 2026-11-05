@@ -52,6 +52,34 @@ function collectBooleanKeys(node, key, sink = []) {
   return sink;
 }
 
+// Scanners that the runner installs on the host rather than in a container.
+// A job that invokes one of them has to install it, otherwise the step dies
+// with "command not found" — a failure that has nothing to do with the code
+// under test and that hides the real result of the gate.
+//
+// Semgrep is deliberately absent: it is installed by
+// scripts/ci/run-semgrep.sh, which the pipeline invokes as a single entry
+// point so that the rule set cannot drift between the job and the baseline
+// generator.
+const HOST_SCANNERS = {
+  checkov: /checkov==/,
+  bandit: /bandit==/,
+  njsscan: /njsscan==/,
+  schemathesis: /schemathesis==/,
+  'pip-audit': /pip-audit==/,
+  gitleaks: /gitleaks/i,
+};
+
+// A step that only prepares the environment. It mentions the scanner, but it
+// does not run it, so it must not be read as an invocation.
+const PREPARATION_STEP = /\b(install|setup|prepare|bootstrap|version)\b/i;
+
+function collectSteps(job) {
+  return (job.steps ?? [])
+    .filter((step) => typeof step.run === 'string')
+    .map((step) => ({ name: step.name ?? '', run: step.run }));
+}
+
 const workflows = listWorkflowFiles();
 
 test('the repository defines at least one GitHub Actions workflow', () => {
@@ -184,17 +212,24 @@ test('every security scanner invocation is followed by an explicit gate', () => 
   for (const file of workflows) {
     const name = path.basename(file);
     const doc = yaml.load(fs.readFileSync(file, 'utf8'));
-    for (const script of collectRunScripts(doc)) {
-      const gated = script
-        .split('\n')
-        .filter((line) => !installPattern.test(line))
-        .join('\n');
-      if (!scannerPattern.test(gated)) continue;
-      assert.match(
-        gated,
-        gatePattern,
-        `${name}: a step that runs a security scanner must also define an explicit gate`,
-      );
+    for (const job of Object.values(doc.jobs ?? {})) {
+      if (typeof job.uses === 'string') continue;
+      for (const step of collectSteps(job)) {
+        // A step that only prepares the environment mentions the scanner
+        // without running it.
+        if (PREPARATION_STEP.test(step.name)) continue;
+
+        const gated = step.run
+          .split('\n')
+          .filter((line) => !installPattern.test(line))
+          .join('\n');
+        if (!scannerPattern.test(gated)) continue;
+        assert.match(
+          gated,
+          gatePattern,
+          `${name}: the step "${step.name}" runs a security scanner but defines no explicit gate`,
+        );
+      }
     }
   }
 });
@@ -252,4 +287,109 @@ test('the workflows and the baseline generator use the pinned scanner images', (
       `${name}: a scanner image must be pinned by digest, not by a tag`,
     );
   }
+});
+
+test('a job that invokes a host scanner installs that scanner', () => {
+  // A scanner that is invoked but never installed dies with "command not
+  // found". The job then fails for a reason that has nothing to do with the
+  // code under test, and the real result of the gate stays hidden.
+  for (const file of workflows) {
+    const name = path.basename(file);
+    const doc = yaml.load(fs.readFileSync(file, 'utf8'));
+    const jobs = doc.jobs ?? {};
+
+    for (const [jobId, job] of Object.entries(jobs)) {
+      if (typeof job.uses === 'string') continue;
+      const steps = collectSteps(job);
+      const allScripts = steps.map((step) => step.run).join('\n');
+      const invocationScripts = steps
+        .filter((step) => !PREPARATION_STEP.test(step.name))
+        .map((step) => step.run)
+        .join('\n');
+
+      for (const [scanner, installation] of Object.entries(HOST_SCANNERS)) {
+        // The scanner has to appear as a command, not as the name of an
+        // install step.
+        const invocation = new RegExp(`(^|[\\s|;&(])${scanner}(\\s|$)`, 'm');
+        if (!invocation.test(invocationScripts)) continue;
+
+        assert.match(
+          allScripts,
+          installation,
+          `${name}: the job "${jobId}" invokes ${scanner} but never installs it`,
+        );
+      }
+    }
+  }
+});
+
+test('the CI job and the baseline generator use the same Bearer options', () => {
+  // The scanner result has to be reproducible. The dependency tree changes
+  // the analysis of Bearer, so the pipeline and the baseline generator have
+  // to exclude it in exactly the same way.
+  const workflow = fs.readFileSync(
+    path.join(WORKFLOW_DIR, 'security.yml'),
+    'utf8',
+  );
+  const generator = fs.readFileSync(
+    path.join(REPO_ROOT, 'scripts', 'ci', 'update-baselines.sh'),
+    'utf8',
+  );
+
+  const optionsPattern = /--skip-path\s+([^\s\\]+)/g;
+  const workflowOptions = [...workflow.matchAll(optionsPattern)].map((m) => m[1]);
+  const generatorOptions = [...generator.matchAll(optionsPattern)].map((m) => m[1]);
+
+  assert.ok(workflowOptions.length > 0, 'the Bearer scan does not exclude any path');
+  assert.deepEqual(
+    [...generatorOptions].sort(),
+    [...workflowOptions].sort(),
+    'the Bearer scan of the pipeline and of the baseline generator must use the same exclusions',
+  );
+});
+
+test('the TruffleHog history scan covers the complete history', () => {
+  // A placeholder hash does not resolve, and the scanner then reports an
+  // error instead of a result. The scan has to start at the root commit.
+  const workflow = fs.readFileSync(
+    path.join(WORKFLOW_DIR, 'security.yml'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(
+    workflow,
+    /0000000000000000000000000000000000000000/,
+    'the TruffleHog scan must not use a placeholder commit hash',
+  );
+  assert.match(
+    workflow,
+    /rev-list --max-parents=0/,
+    'the TruffleHog scan must start at the root commit of the repository',
+  );
+});
+
+test('the TruffleHog exclusion list is a tracked file', () => {
+  // The flag takes the path of a file with the exclusion patterns, so the
+  // file has to exist in the repository.
+  const excludeFile = path.join(
+    REPO_ROOT,
+    'scripts',
+    'ci',
+    'trufflehog-exclude-paths.txt',
+  );
+  assert.ok(fs.existsSync(excludeFile), `missing exclusion list: ${excludeFile}`);
+  assert.ok(
+    fs.readFileSync(excludeFile, 'utf8').trim().length > 0,
+    'the exclusion list is empty',
+  );
+
+  const workflow = fs.readFileSync(
+    path.join(WORKFLOW_DIR, 'security.yml'),
+    'utf8',
+  );
+  assert.match(
+    workflow,
+    /--exclude-paths\s+\S*trufflehog-exclude-paths\.txt/,
+    'the TruffleHog scan must use the tracked exclusion list',
+  );
 });

@@ -136,11 +136,33 @@ scripts/ci/update-baselines.sh
 The regeneration is idempotent: running it twice in a row must not change a
 single baseline file.
 
+### A local scan describes the same tree as a CI scan
+
+A baseline is only useful if the scan that produces it describes the same tree
+as the scan that the pipeline performs. Two scanners were sensitive to the
+surroundings, and both cases were found by comparing a local run with a clean
+checkout:
+
+- **Bearer** analyses the dependency tree. With `node_modules` present the
+  analysis differs from the checkout that the runner uses, and one finding
+  appeared and disappeared between the two environments. The pipeline and the
+  baseline generator therefore exclude `node_modules` explicitly, and
+  `tests/security/workflowPolicy.test.js` asserts that both use the same
+  exclusions.
+- **TruffleHog** scans the working tree, so local build artifacts and the
+  dependency tree end up in the result. The exclusion list in
+  `scripts/ci/trufflehog-exclude-paths.txt` keeps them out, and the history
+  scan starts at the root commit of the repository instead of a placeholder
+  hash that does not resolve.
+
 ### Workflow hardening
 
 - Every action is pinned to a full commit SHA; `pinact` enforces this.
 - Every scanner image is pinned to a digest; `tests/security/workflowPolicy.test.js`
   enforces this.
+- A job that invokes a scanner on the host installs it; the same test file
+  enforces this, because a missing installation fails the job for a reason
+  that has nothing to do with the code under test.
 - `permissions.contents: read` at the workflow level; a job raises permissions
   only where it needs them, with an explanatory comment.
 - `pull_request_target` is not used anywhere.
@@ -196,8 +218,16 @@ service, so the run never touches a production account.
 | Property-based tests | Schemathesis | the responses conform to the contract |
 | DAST | OWASP ZAP | the authenticated surface has no new dynamic finding |
 
-Two implementation details are worth knowing:
+Three implementation details are worth knowing:
 
+- **The server under test.** The job builds the release image and runs the
+  server from it. The proxy automates a browser, and the runner image has no
+  browser that Puppeteer can drive, while the release image carries the
+  Chromium build that the proxy expects. Testing the artifact that ships also
+  means that the runtime, the dependency tree and the browser are exactly the
+  ones of the release. The client key is mounted read-only, and the fake
+  account is written into a writable directory inside the container, so
+  neither becomes part of a layer.
 - **The auth proxy.** ZAP derives its requests from the OpenAPI document and
   cannot attach an `Authorization` header that the document does not contain.
   `scripts/ci/auth-proxy.js` sits between ZAP and the server and injects the

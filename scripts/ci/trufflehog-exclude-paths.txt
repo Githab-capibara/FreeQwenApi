@@ -1,0 +1,13 @@
+node_modules/
+\.git/
+^/repo/security-reports/
+^/repo/sbom\.spdx\.json$
+^/repo/security-report-
+^/repo/trivy-image\.json$
+^/repo/grype-image\.json$
+^/repo/dockle-image\.json$
+^/repo/zap-report
+^/repo/zap\.out$
+^/repo/session/
+^/repo/logs/
+^/repo/uploads/

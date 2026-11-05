@@ -34,6 +34,7 @@ REQUIRED_PIPELINE_FILES = (
     "scripts/ci/baseline-check.sh",
     "scripts/ci/build-dast-spec.js",
     "scripts/ci/run-semgrep.sh",
+    "scripts/ci/trufflehog-exclude-paths.txt",
     "scripts/ci/update-baselines.sh",
     "scripts/ci/verify-api-auth-enforcement.sh",
     "scripts/ci/verify-api-contract-parity.sh",

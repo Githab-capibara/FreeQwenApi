@@ -221,6 +221,7 @@ by the workflows in `.github/workflows/`, not by the application.
 | `verify-no-secrets-in-image.sh` | Proves that no credential material is baked into the container image |
 | `auth-proxy.js` | Injects the bearer header between OWASP ZAP and the API server |
 | `build-dast-spec.js` | Derives the DAST subset of the OpenAPI contract |
+| `trufflehog-exclude-paths.txt` | Paths that TruffleHog leaves out, so a local scan and a CI scan describe the same tree |
 
 The container image of every scanner is pinned to a digest in
 `.github/scanner-images.env`. The workflows and `update-baselines.sh` read
