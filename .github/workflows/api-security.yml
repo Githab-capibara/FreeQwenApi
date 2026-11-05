@@ -235,22 +235,54 @@ jobs:
           # `--network host` lets the container reach the proxy on 127.0.0.1
           # of the runner.
           source .github/scanner-images.env
-          if ! docker run --rm \
+
+          # ZAP runs as the unprivileged `zap` user, whose id does not match
+          # the id of the runner. The workspace is therefore mounted read-only
+          # and the report is written into a directory that the scanner may
+          # write, so the scan does not depend on the id of the runner.
+          rm -rf /tmp/zap-out
+          mkdir -p /tmp/zap-out
+          chmod 777 /tmp/zap-out
+
+          zap_exit=0
+          timeout 1200 docker run --rm \
             --network host \
-            -v "${PWD}:/zap/wrk" \
-            -w /zap/wrk \
+            -v "${PWD}:/zap/wrk:ro" \
+            -v /tmp/zap-out:/zap/out \
+            -w /zap/out \
             "${ZAP_IMAGE}" \
             zap-api-scan.py \
-            -t security-reports/dast/openapi.yaml \
+            -t /zap/wrk/security-reports/dast/openapi.yaml \
             -f openapi \
             -O "http://127.0.0.1:${AUTH_PROXY_PORT}/api" \
-            -c .security-baseline/zap-rules.cfg \
+            -c /zap/wrk/.security-baseline/zap-rules.cfg \
             -T 5 \
-            -r zap-report.html \
-            -J zap-report.json; then
-            echo "::error title=ZAP::the DAST scan reported findings that are not accepted by the baseline"
-            exit 1
+            -r /zap/out/zap-report.html \
+            -J /zap/out/zap-report.json || zap_exit=$?
+
+          if [[ -f /tmp/zap-out/zap-report.html ]]; then
+            cp /tmp/zap-out/zap-report.html zap-report.html
           fi
+          if [[ -f /tmp/zap-out/zap-report.json ]]; then
+            cp /tmp/zap-out/zap-report.json zap-report.json
+          fi
+
+          # ZAP answers 0 without a finding, 2 for a warning, 3 for an error
+          # and 1 when the scanner itself fails. A failed scanner must not be
+          # reported as a finding, and a finding must not be tolerated.
+          case "${zap_exit}" in
+            0)
+              echo "::notice title=ZAP::the scan reported no new finding"
+              ;;
+            2|3)
+              echo "::error title=ZAP::the scan reported findings that the baseline does not accept"
+              exit 1
+              ;;
+            *)
+              echo "::error title=ZAP::the scanner failed with exit code ${zap_exit}"
+              exit 1
+              ;;
+          esac
 
       - name: Upload ZAP report
         if: always()

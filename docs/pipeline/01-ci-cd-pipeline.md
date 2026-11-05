@@ -239,6 +239,13 @@ Three implementation details are worth knowing:
   `scripts/ci/build-dast-spec.js` derives a smaller document from the
   canonical `openapi/openapi.yaml` that contains only the deterministic
   endpoints. The contract stays single-sourced.
+- **The report directory.** OWASP ZAP runs as the unprivileged `zap` user,
+  whose id does not match the id of the runner. The workspace is mounted
+  read-only and the report is written into a separate directory that the
+  scanner may write, so the scan does not depend on the id of the runner.
+  The exit code separates the three outcomes: `0` means no finding, `2` and
+  `3` mean a warning and an error, and any other code means that the scanner
+  itself failed.
 
 ### Image pipeline
 
