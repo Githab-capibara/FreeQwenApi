@@ -79,3 +79,7 @@ Security fixes are applied to the latest `main` branch. Dependabot, the
 scheduled audit workflow and the GitHub secret-scanning and push-protection
 features are enabled for the repository and cover dependency, credential and
 workflow drift respectively.
+
+The `main` branch is protected: a pull request can only be merged when every
+security gate has reported a successful result, and the branch requires a
+linear history without force pushes.

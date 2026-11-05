@@ -108,6 +108,31 @@ performs. The runner omits `--error`, because that flag would turn a finding
 into a scanner failure and bypass the baseline comparison, and it fails the
 job when the scanner itself fails.
 
+### Branch protection
+
+The gates are only effective when a pull request cannot be merged while one
+of them is red. The `main` branch therefore requires the status checks of
+every job of the pipeline:
+
+| Workflow | Required checks |
+|----------|-----------------|
+| `ci.yml` | Node tests, Python tests, Security regression tests, CI gate, API contract parity, Lockfile consistency, CI helper lint |
+| `security.yml` | SAST, Secret scanning, TruffleHog credential scan, Taint analysis (Bearer), Dependency scanning, IaC scanning |
+| `codeql.yml` | Analyze (javascript-typescript), Analyze (python) |
+| `container.yml` | Build and scan image |
+| `api-security.yml` | OpenAPI contract lint, API schema and DAST tests |
+| `supply-chain.yml` | Workflow lint and hardening, OpenSSF Scorecard |
+
+The branch additionally requires a linear history, forbids force pushes and
+deletions, and requires every conversation to be resolved before the merge.
+
+Because a required check that never reports blocks the merge forever, no
+workflow filters its trigger by path. Every gate runs on every pull request,
+and the weekly audit re-runs the same definitions.
+
+The repository additionally runs with secret scanning, secret scanning push
+protection and Dependabot security updates enabled.
+
 ### Scanner images are pinned by digest
 
 `.github/scanner-images.env` holds the container image of every scanner. Each

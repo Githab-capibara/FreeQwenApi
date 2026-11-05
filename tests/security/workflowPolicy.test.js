@@ -289,9 +289,10 @@ test('the workflows and the baseline generator use the pinned scanner images', (
   }
 });
 
-test('a workflow that filters by path still triggers on a change to itself', () => {
-  // Otherwise the gates of a workflow could be weakened without the workflow
-  // ever running again.
+test('every workflow runs on every pull request', () => {
+  // A path filter lets a gate skip a pull request that changes something the
+  // gate has to check, and a required check that never reports would block
+  // the merge forever. Every gate therefore runs on every pull request.
   for (const file of workflows) {
     const name = path.basename(file);
     const doc = yaml.load(fs.readFileSync(file, 'utf8'));
@@ -299,12 +300,9 @@ test('a workflow that filters by path still triggers on a change to itself', () 
 
     for (const event of ['push', 'pull_request']) {
       const paths = triggers[event]?.paths;
-      if (!Array.isArray(paths)) continue;
-
-      const relative = path.relative(REPO_ROOT, file).split(path.sep).join('/');
       assert.ok(
-        paths.includes(relative),
-        `${name}: the ${event} path filter does not include "${relative}", so a change of the workflow would not run it`,
+        !Array.isArray(paths),
+        `${name}: the ${event} trigger must not filter by path, otherwise a gate can skip a change it has to check`,
       );
     }
   }
