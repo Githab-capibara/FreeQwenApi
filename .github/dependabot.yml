@@ -1,0 +1,106 @@
+# Dependabot keeps the dependency surface of FreeQwenApi current.
+#
+# Every update is delivered as a pull request, so it has to pass the same
+# CI gates as any other change: SAST, SCA, secret scanning and the
+# container build.
+version: 2
+
+updates:
+  # Node.js dependencies (package.json + package-lock.json).
+  - package-ecosystem: npm
+    directory: '/'
+    cooldown:
+      # Dependabot waits before opening a pull request, so a wave of
+      # upstream releases cannot flood the review queue.
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: 'build(deps)'
+    groups:
+      # Patch and minor updates are grouped to keep the review queue small.
+      npm-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      npm-lockfile:
+        applies-to: lockfile-dependencies
+
+  # Python dependencies (requirements.txt).
+  - package-ecosystem: pip
+    directory: '/'
+    cooldown:
+      # Dependabot waits before opening a pull request, so a wave of
+      # upstream releases cannot flood the review queue.
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:30'
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: 'build(deps)'
+
+  # GitHub Actions used by the CI pipeline itself.
+  - package-ecosystem: github-actions
+    directory: '/'
+    cooldown:
+      # Dependabot waits before opening a pull request, so a wave of
+      # upstream releases cannot flood the review queue.
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Moscow
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: 'build(ci)'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  # Container base image referenced by the Dockerfile.
+  - package-ecosystem: docker
+    directory: '/'
+    cooldown:
+      # Dependabot waits before opening a pull request, so a wave of
+      # upstream releases cannot flood the review queue.
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:30'
+      timezone: Europe/Moscow
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: 'build(docker)'

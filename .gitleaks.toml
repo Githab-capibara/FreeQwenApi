@@ -1,0 +1,39 @@
+# Gitleaks policy for FreeQwenApi.
+#
+# Design:
+#   - Default ruleset stays enabled; nothing is globally disabled.
+#   - Allowlists are narrow, path-scoped, and documented.
+#   - Git history is scanned in CI; pre-existing history findings are baselined
+#     through .gitleaks-baseline.json so that NEW leaks always fail the build.
+title = "FreeQwenApi secret scanning policy"
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Working-tree allowlist: local credential files that are git-ignored.
+# Gitleaks `dir` mode walks the filesystem and therefore sees files that are
+# intentionally excluded from version control. These are runtime secrets
+# owned by the operator, not repository leaks.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "Local runtime credential stores (git-ignored, operator-owned)"
+paths = [
+  '''src/Authorization\.txt''',
+  '''^proxies\.txt$''',
+  '''^\.env(\..+)?$''',
+  '''^session/''',
+  '''^logs/''',
+  '''^uploads/''',
+]
+
+# ---------------------------------------------------------------------------
+# History allowlist: documentation placeholders that look like credentials.
+# These are literal placeholders in curl examples, not real secrets.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "Documentation placeholder bearer tokens (not real credentials)"
+regexes = [
+  '''Bearer\s+(YOUR[_ -]?API[_ -]?KEY|your[_ -]?api[_ -]?key|<[^>]+>|\$\{[^}]+\}|xxx+|placeholder|dummy[-_ ]?key)''',
+  '''Bearer\s+[a-f0-9]{32}\s*$''',
+]

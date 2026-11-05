@@ -10,7 +10,9 @@ const openai = new OpenAI({
 
 // ВАЖНО: Замените URL_ИЗОБРАЖЕНИЯ на реальный URL изображения, полученный из интерфейса Qwen
 // Инструкция по получению URL в README.md, раздел "Получение URL изображения из интерфейса Qwen"
-const IMAGE_URL = "https://cdn.qwenlm.ai/bf6238a3-4578-49d6-b4a9-516e8a5eb27b/c88bc915-6ae7-4057-9bf9-1185c9141a0a_image.png?key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZV91c2VyX2lkIjoiYmY2MjM4YTMtNDU3OC00OWQ2LWI0YTktNTE2ZThhNWViMjdiIiwicmVzb3VyY2VfaWQiOiJjODhiYzkxNS02YWU3LTQwNTctOWJmOS0xMTg1YzkxNDFhMGEiLCJyZXNvdXJjZV9jaGF0X2lkIjpudWxsfQ.qPvHr4fq23IgzxmxOyFJuFcVL0AJlpGgPlWB8BHkrlo";
+// ВНИМАНИЕ: не вставляйте сюда реальный подписанный URL с параметром `key` — это учётные данные,
+// которые попадут в Git-историю. Скачайте изображение локально и передайте путь через переменную окружения.
+const IMAGE_URL = process.env.QWEN_IMAGE_URL || 'https://example.com/path/to/image.png';
 
 async function analyzeImage() {
     try {

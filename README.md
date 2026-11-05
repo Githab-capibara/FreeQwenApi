@@ -9,6 +9,8 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Join-blue?link=https://discord.gg/forgetmeai)](https://discord.gg/forgetmeai)
 [![Website](https://img.shields.io/badge/Website-forgetmeai-blue?link=https://forgetmeai.com)](https://forgetmeai.com)
+[![CI](https://github.com/Githab-capibara/FreeQwenApi/actions/workflows/ci.yml/badge.svg)](https://github.com/Githab-capibara/FreeQwenApi/actions/workflows/ci.yml)
+[![Security](https://github.com/Githab-capibara/FreeQwenApi/actions/workflows/security.yml/badge.svg)](https://github.com/Githab-capibara/FreeQwenApi/actions/workflows/security.yml)
 
 ![Architecture](docs/assets/01-architecture-diagram.svg)
 
@@ -102,6 +104,8 @@ Full parameter list: [.env.example](.env.example)
 | [docs/api/01-api-endpoints-reference.md](docs/api/01-api-endpoints-reference.md) | Full API endpoint reference |
 | [docs/examples/01-nodejs-examples.md](docs/examples/01-nodejs-examples.md) | Node.js usage examples |
 | [docs/examples/02-python-examples.md](docs/examples/02-python-examples.md) | Python usage examples |
+| [docs/pipeline/01-ci-cd-pipeline.md](docs/pipeline/01-ci-cd-pipeline.md) | CI/CD and security pipeline: coverage matrix and enforcement policy |
+| [SECURITY.md](SECURITY.md) | Security policy and automated pipeline coverage |
 
 ## Quick commands
 

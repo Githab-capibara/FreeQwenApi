@@ -1,0 +1,254 @@
+name: API Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  API_PORT: '3264'
+  MOCK_PORT: '3265'
+  AUTH_PROXY_PORT: '3266'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Area 8 — API contracts and handlers
+  # ---------------------------------------------------------------------------
+  contract:
+    name: OpenAPI contract lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@101b3474143230c3562bd21f0b3c3f8254784571 # v6.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Validate OpenAPI specification
+        run: npx --yes @redocly/cli@2.2.0 lint openapi/openapi.yaml --format=stylish
+
+      - name: Spectral — OpenAPI ruleset
+        run: |
+          set -euo pipefail
+          npx --yes @stoplight/spectral-cli@6.17.0 lint \
+            openapi/openapi.yaml \
+            --ruleset .spectral.yaml \
+            --fail-severity=error \
+            --format=stylish
+
+      - name: Detect breaking API changes
+        run: |
+          set -euo pipefail
+          BASE_REF="${BASE_REF:-}"
+          if [[ -z "${BASE_REF}" ]]; then
+            echo "::notice::No base reference available; skipping breaking-change detection"
+            exit 0
+          fi
+          source .github/scanner-images.env
+          docker run --rm \
+            -v "${PWD}:/repo" \
+            -w /repo \
+            "${OASDIFF_IMAGE}" \
+            breaking \
+            "${BASE_REF}:openapi/openapi.yaml" \
+            openapi/openapi.yaml
+
+  # ---------------------------------------------------------------------------
+  # Area 8 — Runtime API testing against an isolated instance.
+  # The upstream Qwen service is replaced by a local mock, so the test never
+  # touches production accounts or the real upstream API.
+  # ---------------------------------------------------------------------------
+  api-tests:
+    name: API schema and DAST tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@101b3474143230c3562bd21f0b3c3f8254784571 # v6.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start mock upstream and API server
+        run: |
+          set -euo pipefail
+          # Local mock stands in for chat.qwen.ai so no real account or
+          # upstream request is involved.
+          mkdir -p /tmp/mock-upstream
+          printf '<!doctype html><html><head><title>Qwen Mock</title></head><body>mock</body></html>' \
+            > /tmp/mock-upstream/index.html
+          python3 -m http.server "${MOCK_PORT}" --directory /tmp/mock-upstream \
+            >/tmp/mock-upstream.log 2>&1 &
+          echo "${!}" > /tmp/mock-upstream.pid
+
+          # Fake account + client key so the server can start in CI.
+          mkdir -p session
+          printf '[{"id":"ci-account","token":"ci-placeholder-token","resetAt":null,"invalid":false}]\n' \
+            > session/tokens.json
+          printf 'ci-placeholder-key\n' > src/Authorization.txt
+
+          NON_INTERACTIVE=1 \
+          SKIP_ACCOUNT_MENU=1 \
+          CHROME_PATH="$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)" \
+          CHROME_PROFILE_DIR="${RUNNER_TEMP}/freeqwen-chrome-profile" \
+          PORT="${API_PORT}" \
+          HOST=127.0.0.1 \
+          QWEN_BASE_URL="http://127.0.0.1:${MOCK_PORT}" \
+            node index.js > /tmp/api-server.log 2>&1 &
+          echo "${!}" > /tmp/api-server.pid
+
+          # Wait for readiness.
+          for _ in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:${API_PORT}/api/" >/dev/null 2>&1; then
+              echo "API server is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::API server did not become ready in time"
+          cat /tmp/api-server.log || true
+          exit 1
+
+      - name: Upload server log on failure
+        if: failure()
+        run: |
+          cat /tmp/api-server.log || true
+          cat /tmp/mock-upstream.log || true
+
+      - name: Verify authentication enforcement
+        run: |
+          set -euo pipefail
+          bash scripts/ci/verify-api-auth-enforcement.sh \
+            "http://127.0.0.1:${API_PORT}/api" \
+            "ci-placeholder-key"
+
+      - name: Schemathesis — property-based API testing
+        run: |
+          set -euo pipefail
+          pip install --no-cache-dir schemathesis==4.6.1
+          # The scope is limited to the endpoints that answer deterministically
+          # without the upstream Qwen service. The completion endpoints require
+          # a live upstream and are covered by the mock-upstream smoke tests.
+          #
+          # `unsupported_method` is excluded because Express answers an
+          # undeclared method with 404 instead of 405, which is a framework
+          # choice rather than a contract violation.
+          if ! SCHEMATHESIS_BEARER="ci-placeholder-key" schemathesis \
+            --config-file schemathesis.toml \
+            run \
+            openapi/openapi.yaml \
+            --url "http://127.0.0.1:${API_PORT}/api" \
+            --include-path-regex '^/(health|models|v1/models|status|)$' \
+            --checks all \
+            --exclude-checks ignored_auth,unsupported_method \
+            --max-examples 20 \
+            --workers 2 \
+            --no-color; then
+            echo "::error title=Schemathesis::the API does not conform to the OpenAPI contract"
+            exit 1
+          fi
+
+      - name: OWASP ZAP — API DAST scan
+        run: |
+          set -euo pipefail
+          # ZAP cannot attach an Authorization header to the requests it
+          # derives from an OpenAPI document: the header is not part of the
+          # request, so the ZAP replacer never matches it and every protected
+          # endpoint answers with 401. The auth proxy injects the header, so
+          # the dynamic scan exercises the authenticated surface as well.
+          AUTH_PROXY_TARGET="http://127.0.0.1:${API_PORT}" \
+          AUTH_PROXY_TOKEN="ci-placeholder-key" \
+          AUTH_PROXY_PORT="${AUTH_PROXY_PORT}" \
+            node scripts/ci/auth-proxy.js > /tmp/auth-proxy.log 2>&1 &
+          echo "${!}" > /tmp/auth-proxy.pid
+
+          proxy_ready=0
+          for _ in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${AUTH_PROXY_PORT}/api/" >/dev/null 2>&1; then
+              proxy_ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [[ "${proxy_ready}" -ne 1 ]]; then
+            echo "::error title=ZAP::the auth proxy did not become ready"
+            cat /tmp/auth-proxy.log
+            exit 1
+          fi
+
+          # The completion endpoints forward to the upstream Qwen service, which
+          # is absent in CI. The application retries such a failed upstream call
+          # several times, which makes an active scan of the whole contract run
+          # for hours. The scan therefore uses the deterministic subset of the
+          # contract, derived from the canonical document.
+          node scripts/ci/build-dast-spec.js security-reports/dast/openapi.yaml
+
+          # `--network host` lets the container reach the proxy on 127.0.0.1
+          # of the runner.
+          source .github/scanner-images.env
+          if ! docker run --rm \
+            --network host \
+            -v "${PWD}:/zap/wrk" \
+            -w /zap/wrk \
+            "${ZAP_IMAGE}" \
+            zap-api-scan.py \
+            -t security-reports/dast/openapi.yaml \
+            -f openapi \
+            -O "http://127.0.0.1:${AUTH_PROXY_PORT}/api" \
+            -c .security-baseline/zap-rules.cfg \
+            -T 5 \
+            -r zap-report.html \
+            -J zap-report.json; then
+            echo "::error title=ZAP::the DAST scan reported findings that are not accepted by the baseline"
+            exit 1
+          fi
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
+        with:
+          name: zap-api-report
+          path: zap-report.html
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop servers
+        if: always()
+        run: |
+          kill "$(cat /tmp/auth-proxy.pid 2>/dev/null || echo 0)" 2>/dev/null || true
+          kill "$(cat /tmp/api-server.pid 2>/dev/null || echo 0)" 2>/dev/null || true
+          kill "$(cat /tmp/mock-upstream.pid 2>/dev/null || echo 0)" 2>/dev/null || true

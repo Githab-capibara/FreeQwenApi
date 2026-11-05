@@ -1,0 +1,15 @@
+# Schemathesis configuration for FreeQwenApi.
+#
+# The bearer token is supplied through the environment so that no credential
+# ever appears in the repository. Schemathesis substitutes `${VAR}`
+# placeholders from the process environment at configuration load time.
+#
+# Usage in CI:
+#   SCHEMATHESIS_BEARER=<key> schemathesis --config-file schemathesis.toml run ...
+[auth.openapi.bearerAuth]
+bearer = "${SCHEMATHESIS_BEARER}"
+
+# Warnings are fatal: an operation that only ever answers with 401/403 means
+# the contract and the implementation disagree about authentication.
+[warnings]
+fail-on = true

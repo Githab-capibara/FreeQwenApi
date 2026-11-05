@@ -1,0 +1,830 @@
+openapi: 3.1.0
+info:
+  title: FreeQwenApi
+  version: 1.0.0
+  description: >-
+    OpenAI-compatible proxy API for Qwen Chat, exposed by FreeQwenApi.
+    This contract describes the security-relevant surface used by CI contract
+    tests (Spectral, Schemathesis) and by API DAST.
+  license:
+    name: MIT
+    url: https://github.com/Githab-capibara/FreeQwenApi/blob/main/LICENSE
+  contact:
+    name: FreeQwenApi maintainers
+    url: https://github.com/Githab-capibara/FreeQwenApi
+
+servers:
+  - url: http://127.0.0.1:3264/api
+    description: Local development server
+
+tags:
+  - name: Meta
+    description: Service discovery, health and model catalogue
+  - name: Chat
+    description: OpenAI/Anthropic compatible completion endpoints
+  - name: Files
+    description: File upload and STS token endpoints
+  - name: Media
+    description: Image and video generation endpoints
+
+security:
+  - bearerAuth: []
+
+paths:
+  /:
+    get:
+      tags: [Meta]
+      summary: Service root
+      operationId: getServiceRoot
+      description: Returns service metadata and the API base path.
+      security: []
+      responses:
+        '200':
+          description: Service information
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, service, baseUrl]
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  baseUrl: { type: string }
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+    head:
+      tags: [Meta]
+      summary: Liveness probe
+      operationId: headServiceRoot
+      description: Liveness probe returning status 200 with an empty body.
+      security: []
+      responses:
+        '200':
+          description: Service is alive
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+
+  /health:
+    get:
+      tags: [Meta]
+      summary: Aggregate health and account state
+      operationId: getHealth
+      description: Returns aggregate health, model count and upstream account state.
+      responses:
+        '200':
+          description: Health snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, service]
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  watermark: { type: boolean }
+                  baseUrl: { type: string }
+                  models: { type: integer, minimum: 0 }
+                  accounts:
+                    type: object
+                    properties:
+                      total: { type: integer, minimum: 0 }
+                      available: { type: integer, minimum: 0 }
+                      invalid: { type: integer, minimum: 0 }
+                      waiting: { type: integer, minimum: 0 }
+                  timestamp: { type: string, format: date-time }
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /status:
+    get:
+      tags: [Meta]
+      summary: Detailed upstream account status
+      operationId: getStatus
+      description: Returns detailed upstream account status including cooldown state.
+      responses:
+        '200':
+          description: Account status list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        status: { type: string }
+                        model: { type: string }
+                        resetAt: { type: [string, 'null'] }
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /models:
+    get:
+      tags: [Meta]
+      summary: List available models
+      operationId: listModels
+      description: Returns the catalogue of models available for chat completions.
+      responses:
+        '200':
+          description: OpenAI-style model list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [object, data]
+                properties:
+                  object: { type: string, const: list }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        object: { type: string }
+                        created: { type: integer }
+                        owned_by: { type: string }
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/models:
+    get:
+      tags: [Meta]
+      summary: List available models (v1 alias)
+      operationId: listModelsV1
+      description: Returns the model catalogue under the v1 prefix.
+      responses:
+        '200':
+          description: OpenAI-style model list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [object, data]
+                properties:
+                  object: { type: string, const: list }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        object: { type: string }
+                        created: { type: integer }
+                        owned_by: { type: string }
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /chat:
+    post:
+      tags: [Chat]
+      summary: Send a chat message
+      operationId: postChat
+      description: Sends a chat message using the simplified message form.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Single-message shortcut form
+                messages:
+                  type: array
+                  description: OpenAI-style message array
+                  items:
+                    type: object
+                    properties:
+                      role: { type: string }
+                      content:
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: object
+                model: { type: string }
+                chatId: { type: string }
+                stream: { type: boolean }
+      responses:
+        '200':
+          description: Completion or server-sent event stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /chat/completions:
+    post:
+      tags: [Chat]
+      summary: OpenAI-compatible chat completion
+      operationId: postChatCompletions
+      description: OpenAI-compatible chat completion endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [role]
+                    properties:
+                      role: { type: string }
+                      content:
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: object
+                stream: { type: boolean }
+                tools:
+                  type: array
+                  items:
+                    type: object
+                tool_choice: {}
+                chat_id: { type: string }
+      responses:
+        '200':
+          description: Completion or server-sent event stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Upstream or internal failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags: [Chat]
+      summary: Method not allowed hint
+      operationId: getChatCompletions
+      description: Returns 405 to indicate that POST is required.
+      responses:
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Use POST instead
+
+  /v1/chat/completions:
+    post:
+      tags: [Chat]
+      summary: OpenAI-compatible chat completion (v1 alias)
+      operationId: postChatCompletionsV1
+      description: OpenAI-compatible chat completion endpoint under the v1 prefix.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [role]
+                    properties:
+                      role: { type: string }
+                      content:
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: object
+                stream: { type: boolean }
+      responses:
+        '200':
+          description: Completion or server-sent event stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages:
+    post:
+      tags: [Chat]
+      summary: Anthropic-compatible messages endpoint
+      operationId: postMessages
+      description: Anthropic-compatible messages endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                max_tokens: { type: integer, minimum: 1 }
+                stream: { type: boolean }
+      responses:
+        '200':
+          description: Completion or server-sent event stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/messages:
+    post:
+      tags: [Chat]
+      summary: Anthropic-compatible messages endpoint (v1 alias)
+      operationId: postMessagesV1
+      description: Anthropic-compatible messages endpoint under the v1 prefix.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                max_tokens: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Completion or server-sent event stream
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /responses:
+    post:
+      tags: [Chat]
+      summary: OpenAI Responses API shim
+      operationId: postResponses
+      description: OpenAI Responses API compatible shim.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: { type: string }
+                input: {}
+      responses:
+        '200':
+          description: Response payload
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /chats:
+    post:
+      tags: [Chat]
+      summary: Create an upstream chat session
+      operationId: postChats
+      description: Creates an upstream chat session bound to the caller credential scope.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                model: { type: string }
+      responses:
+        '200':
+          description: Created chat descriptor
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /chats/{chatId}/history:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9_-]+$'
+    get:
+      tags: [Chat]
+      summary: Read scoped conversation history
+      operationId: getChatHistory
+      description: Reads conversation history scoped to the caller credential.
+      responses:
+        '200':
+          description: History payload
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid chat identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: History not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [Chat]
+      summary: Write scoped conversation history
+      operationId: postChatHistory
+      description: Persists conversation history scoped to the caller credential.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: History saved
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid chat identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/getstsToken:
+    post:
+      tags: [Files]
+      summary: Request a short-lived STS token for an upload
+      operationId: postFilesGetStsToken
+      description: Requests a short-lived STS token used for upstream file upload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, filesize, filetype]
+              properties:
+                filename: { type: string }
+                filesize: { type: integer, minimum: 1 }
+                filetype: { type: string }
+      responses:
+        '200':
+          description: STS token payload
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Missing file metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/upload:
+    post:
+      tags: [Files]
+      summary: Upload a file for upstream processing
+      operationId: postFilesUpload
+      description: Uploads a file to upstream storage on behalf of the caller.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Missing file part
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /images/generations:
+    post:
+      tags: [Media]
+      summary: Generate an image
+      operationId: postImageGenerations
+      description: Generates an image and returns its descriptor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt: { type: string }
+                model: { type: string }
+                n: { type: integer, minimum: 1 }
+                size: { type: string }
+      responses:
+        '200':
+          description: Generated image descriptor
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /videos/generations:
+    post:
+      tags: [Media]
+      summary: Start a video generation task
+      operationId: postVideoGenerations
+      description: Starts a video generation task and returns its descriptor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt: { type: string }
+                model: { type: string }
+                size: { type: string }
+                aspect_ratio: { type: string }
+                wait: { type: boolean }
+      responses:
+        '200':
+          description: Task descriptor
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/status/{taskId}:
+    get:
+      tags: [Media]
+      summary: Read media generation task status
+      operationId: getTaskStatus
+      description: Returns the status of a media generation task.
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task status
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: >-
+            The request was rejected before it reached the handler, for example
+            because a request header is malformed. The response has no body.
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        Client API key read from src/Authorization.txt. When the file contains
+        no keys the Node entrypoint currently allows unauthenticated access;
+        see docs/pipeline/01-ci-cd-pipeline.md.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          oneOf:
+            - type: string
+            - type: object
+        message: { type: string }
+        type: { type: string }

@@ -1,0 +1,19 @@
+# Bandit configuration for FreeQwenApi.
+#
+# Applied with: bandit -c .bandit -r <targets>
+#
+# Severity policy:
+#   Findings are reported as JSON and compared against
+#   .security-baseline/bandit.json. A finding that is not in the baseline
+#   fails the job (fail-closed on regressions).
+#
+# B101 (assert_used) is skipped: the test-suite uses plain asserts and
+# Python assertions are not a security control in production code paths.
+exclude_dirs:
+  - './node_modules'
+  - './.git'
+  - './tests/security/fixtures'
+  - './security-reports'
+  - './.security-baseline'
+skips:
+  - 'B101'

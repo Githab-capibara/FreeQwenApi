@@ -1,0 +1,32 @@
+# Code owners for FreeQwenApi.
+#
+# The owners are requested for review automatically. Pipeline changes are
+# additionally covered by the CI policy tests in tests/security/, so a
+# weakening of the fail-closed gates is always visible in the review diff.
+
+# Default ownership for everything that is not listed below.
+* @Githab-capibara
+
+# CI/CD pipeline and security tooling.
+/.github/ @Githab-capibara
+/scripts/ci/ @Githab-capibara
+/.security-baseline/ @Githab-capibara
+/.gitleaks.toml @Githab-capibara
+/.gitleaks-baseline.json @Githab-capibara
+/.semgrep.yml @Githab-capibara
+/.spectral.yaml @Githab-capibara
+/.bandit @Githab-capibara
+/.njsscan @Githab-capibara
+/schemathesis.toml @Githab-capibara
+/openapi/ @Githab-capibara
+/tests/security/ @Githab-capibara
+
+# Security policy.
+/SECURITY.md @Githab-capibara
+/docs/governance/03-security-policy.md @Githab-capibara
+/docs/security/ @Githab-capibara
+
+# Runtime credentials must never be committed.
+/src/Authorization.txt @Githab-capibara
+/proxies.txt @Githab-capibara
+/session/ @Githab-capibara

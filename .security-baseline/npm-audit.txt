@@ -1,0 +1,22 @@
+@puppeteer/browsers|high|*
+basic-ftp|high|<=6.2.0
+body-parser|high|<1.20.9
+brace-expansion|high|<=1.1.20
+chromium-bidi|high|0.5.13 - 157.0.8081-0
+deepmerge|low|>=4.2.0
+extract-zip|high|*
+follow-redirects|high|1.16.0 - 1.16.1
+get-uri|high|>=5.0.0
+ip-address|moderate|<=10.7.3
+multer|high|2.0.0 - 2.4.0
+openai|high|4.55.0 - 5.23.2
+pac-proxy-agent|high|>=6.0.0
+proxy-addr|critical|1.1.0 - 2.0.7
+proxy-agent|high|>=6.0.0
+puppeteer-core|high|19.8.4 - 25.12.0
+puppeteer-extra-plugin-stealth|low|>=2.7.1
+puppeteer-extra-plugin-user-preferences|low|>=2.1.5
+puppeteer-extra|low|>=2.1.6
+puppeteer|high|19.8.1 - 25.12.0
+qs|moderate|2.2.5 - 6.16.0
+zod|high|<4.6.6

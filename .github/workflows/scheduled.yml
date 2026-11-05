@@ -1,0 +1,81 @@
+name: Scheduled Audit
+
+on:
+  schedule:
+    # Weekly deep audit (Tuesdays, 02:07 UTC).
+    - cron: '7 2 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The weekly run re-executes the very same reusable workflows that guard
+  # every pull request. The gates are identical, so a vulnerability that
+  # appears between two pull requests (a new advisory, a new secret, a new
+  # base-image CVE) still breaks the build.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: CI (full re-run)
+    uses: ./.github/workflows/ci.yml # zizmor: ignore[self-repository] actionlint does not support the `$/` syntax yet
+    permissions:
+      contents: read
+
+  security:
+    name: Security (full re-scan)
+    uses: ./.github/workflows/security.yml # zizmor: ignore[self-repository] actionlint does not support the `$/` syntax yet
+    permissions:
+      contents: read
+
+  codeql:
+    name: CodeQL (deep analysis)
+    uses: ./.github/workflows/codeql.yml # zizmor: ignore[self-repository] actionlint does not support the `$/` syntax yet
+    permissions:
+      contents: read
+      security-events: write  # Required to upload CodeQL SARIF results to code scanning.
+      actions: read         # Required by the CodeQL action to read the workflow run.
+
+  container:
+    name: Container (image audit)
+    uses: ./.github/workflows/container.yml # zizmor: ignore[self-repository] actionlint does not support the `$/` syntax yet
+    permissions:
+      contents: read
+
+  api-security:
+    name: API security (contract and DAST)
+    uses: ./.github/workflows/api-security.yml # zizmor: ignore[self-repository] actionlint does not support the `$/` syntax yet
+    permissions:
+      contents: read
+
+  supply-chain:
+    name: Supply chain (Scorecard)
+    uses: ./.github/workflows/supply-chain.yml # zizmor: ignore[self-repository] actionlint does not support the `$/` syntax yet
+    permissions:
+      contents: read
+      security-events: write  # Required to publish the Scorecard results as a code-scanning alert.
+      id-token: write         # Required to request the OIDC token that identifies the workflow run.
+
+  # ---------------------------------------------------------------------------
+  # The audit only fails when a gate fails. It never reports success on its
+  # own: every conclusion comes from the reusable workflows above.
+  # ---------------------------------------------------------------------------
+  summary:
+    name: Audit summary
+    needs:
+      - ci
+      - security
+      - codeql
+      - container
+      - api-security
+      - supply-chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Summarise the weekly audit
+        run: |
+          echo "Weekly security audit completed. Every reusable workflow above must be green."

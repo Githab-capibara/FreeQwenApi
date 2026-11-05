@@ -1,0 +1,22 @@
+[
+  "freeqwenapi.express.auth.fail-open-when-no-keys|src/api/routes.js|362|requires login",
+  "freeqwenapi.express.auth.missing-bearer-scheme-check|src/api/routes.js|373|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|1414|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|1608|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|1629|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|1686|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|2030|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|2051|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|2101|requires login",
+  "freeqwenapi.express.logging.request-body|src/api/routes.js|2224|requires login",
+  "freeqwenapi.express.request-body.excessive-limit|index.js|60|requires login",
+  "freeqwenapi.express.request-body.excessive-limit|index.js|61|requires login",
+  "freeqwenapi.javascript.crypto.weak-hash-for-fingerprint|src/api/chat.js|143|requires login",
+  "freeqwenapi.javascript.crypto.weak-hash-for-fingerprint|src/api/chat.js|149|requires login",
+  "freeqwenapi.javascript.crypto.weak-hash-for-fingerprint|src/api/keyedQueue.js|15|requires login",
+  "freeqwenapi.javascript.crypto.weak-hash-for-fingerprint|src/api/keyedQueue.js|26|requires login",
+  "freeqwenapi.javascript.crypto.weak-hash-for-fingerprint|src/api/keyedQueue.js|48|requires login",
+  "freeqwenapi.python.auth.fail-open-on-missing-keys|main.py|332|requires login",
+  "freeqwenapi.python.auth.fail-open-on-missing-keys|main.py|335|requires login",
+  "freeqwenapi.python.command-injection|main.py|1235|requires login"
+]

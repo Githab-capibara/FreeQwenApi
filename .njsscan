@@ -1,0 +1,26 @@
+# NodeJSScan configuration for FreeQwenApi.
+#
+# Applied with: njsscan -c .njsscan <paths>
+#
+# Severity policy:
+#   ERROR   -> reported and tracked in .security-baseline/njsscan.json
+#   WARNING -> reported and tracked in the same baseline
+#   INFO    -> not enforced (informational only)
+#
+# The baseline mechanism is what blocks regressions: a finding that is not in
+# .security-baseline/njsscan.json fails the job. See
+# scripts/ci/baseline-check.sh and scripts/ci/update-baselines.sh.
+severity-filter:
+  - WARNING
+  - ERROR
+
+# Paths that are not first-party server code and carry no security signal
+# for this repository.
+ignore-paths:
+  - node_modules
+  - examples
+  - tests
+  - .git
+  - .security-baseline
+  - security-reports
+  - sbom

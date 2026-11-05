@@ -1,0 +1,166 @@
+name: Container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'index.js'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'index.js'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: qwen-api-proxy
+
+jobs:
+  build-and-scan:
+    name: Build and scan image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.12.0
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.19.1
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+
+      - name: Verify no secrets are baked into the image
+        run: |
+          set -euo pipefail
+          # A secret in an image layer is unrecoverable once the image is
+          # published, so this check is strict and has no baseline.
+          bash scripts/ci/verify-no-secrets-in-image.sh "${IMAGE_NAME}:ci"
+
+      - name: Trivy — image vulnerability and secret scan
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          # Trivy exits non-zero when it reports findings; the baseline
+          # comparison decides whether the build may pass.
+          if ! docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${PWD}:/out" \
+            "${TRIVY_IMAGE}" \
+            image \
+            --format json \
+            --output /out/trivy-image.json \
+            --scanners vuln,secret \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            "${IMAGE_NAME}:ci"; then
+            echo "::notice title=Trivy::findings reported; the baseline comparison decides"
+          fi
+          if [[ ! -f trivy-image.json ]]; then
+            echo "::error title=Trivy::the scanner produced no report"
+            exit 1
+          fi
+          # Secrets are never baselined: any credential in the image fails.
+          SECRET_COUNT="$(jq '[.Results[]?.Secrets[]?] | length' trivy-image.json)"
+          if [[ "${SECRET_COUNT}" -ne 0 ]]; then
+            echo "::error title=Trivy::${SECRET_COUNT} secret(s) detected in the image"
+            jq -r '.Results[]?.Secrets[]? | "::error title=Trivy::\(.Target)|\(.RuleID)|\(.Title)"' \
+              trivy-image.json
+            exit 1
+          fi
+          bash scripts/ci/baseline-check.sh trivy-image \
+            trivy-image.json \
+            .security-baseline/trivy-image.json
+
+      - name: Grype — independent image vulnerability scan
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          # Grype exits non-zero when it reports findings; the baseline
+          # comparison decides whether the build may pass.
+          if ! docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${PWD}:/out" \
+            "${GRYPE_IMAGE}" \
+            "image:${IMAGE_NAME}:ci" \
+            --output json \
+            --file /out/grype-image.json \
+            --only-fixed; then
+            echo "::notice title=Grype::findings reported; the baseline comparison decides"
+          fi
+          if [[ ! -f grype-image.json ]]; then
+            echo "::error title=Grype::the scanner produced no report"
+            exit 1
+          fi
+          bash scripts/ci/baseline-check.sh grype-image \
+            grype-image.json \
+            .security-baseline/grype-image.json
+
+      - name: Dockle — Docker best practices
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          # Dockle exits non-zero when it reports findings; the baseline
+          # comparison decides whether the build may pass.
+          if ! docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            "${DOCKLE_IMAGE}" \
+            --exit-code 1 \
+            --exit-level INFO \
+            -f json \
+            "${IMAGE_NAME}:ci" > dockle-image.json; then
+            echo "::notice title=Dockle::findings reported; the baseline comparison decides"
+          fi
+          if [[ ! -s dockle-image.json ]]; then
+            echo "::error title=Dockle::the scanner produced no report"
+            exit 1
+          fi
+          bash scripts/ci/baseline-check.sh dockle \
+            dockle-image.json \
+            .security-baseline/dockle.json
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@2ed2d2006fea5d582c257dbad4532b1e4cbc8b83 # v0.20.6
+        with:
+          image: ${{ env.IMAGE_NAME }}:ci
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4.6.2
+        with:
+          name: sbom-${{ env.IMAGE_NAME }}
+          path: sbom.spdx.json
+          if-no-files-found: error
+          retention-days: 30

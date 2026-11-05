@@ -1,0 +1,253 @@
+# Semgrep configuration for FreeQwenApi.
+#
+# Layers:
+#   1. Community registry rulesets (CI + security-audit) — broad coverage.
+#   2. Repository-specific rules below — risks that generic rulesets do not
+#      model for this project.
+#
+# Scope:
+#   Repository-specific rules target first-party server code only
+#   (src/, index.js, main.py, python_affinity.py). Client examples under
+#   examples/ are not server trust boundaries and are excluded to avoid
+#   false positives; they are still covered by the generic registry rulesets.
+#
+# Severity policy:
+#   ERROR   -> blocks CI
+#   WARNING -> reported, does not block
+#
+# See docs/pipeline/01-ci-cd-pipeline.md for the enforcement policy.
+
+rules:
+  - id: freeqwenapi.express.auth.fail-open-when-no-keys
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Authorization middleware allows unauthenticated access when the API key
+      list is empty. FreeQwenApi stores client keys in src/Authorization.txt.
+      An empty or unreadable file silently disables authentication for every
+      protected route.
+    metadata:
+      category: security
+      cwe: CWE-306
+      owasp: A07:2021 - Identification and Authentication Failures
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    patterns:
+      - pattern-inside: |
+          if ($KEYS.length === 0) {
+            ...
+            return next();
+          }
+
+  - id: freeqwenapi.express.auth.missing-bearer-scheme-check
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      The Authorization header is consumed without verifying the "Bearer "
+      scheme prefix. Requests using a different scheme must be rejected.
+    metadata:
+      category: security
+      cwe: CWE-287
+      owasp: A07:2021 - Identification and Authentication Failures
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    patterns:
+      - pattern-either:
+          - pattern: $TOKEN = $HEADER.substring(...).trim()
+          - pattern: $TOKEN = $HEADER.slice(...).trim()
+      - metavariable-regex:
+          metavariable: $HEADER
+          regex: "(?i)(authorization|authHeader)"
+      - pattern-not-inside: |
+          if (!$HEADER || !$HEADER.startsWith('Bearer ')) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (!$HEADER || !$HEADER.startsWith("Bearer ")) {
+            ...
+          }
+
+  - id: freeqwenapi.express.upload.raw-filename-in-path
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Uploaded file metadata is concatenated into a filesystem path without
+      sanitisation. Client-controlled `originalname` must never be used to
+      build a path; use a generated identifier instead.
+    metadata:
+      category: security
+      cwe: CWE-22
+      owasp: A01:2021 - Broken Access Control
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    pattern-either:
+      - pattern: $FS.writeFileSync($PATH + ... + $REQ.file.originalname, ...)
+      - pattern: $FS.writeFileSync($PATH + ... + $REQ.body.originalname, ...)
+      - pattern: path.join(..., $REQ.file.originalname, ...)
+      - pattern: path.join(..., $REQ.body.originalname, ...)
+
+  - id: freeqwenapi.express.request-body.excessive-limit
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Request body parser limit is excessively large. A very large limit
+      allows trivial memory exhaustion. Keep request payloads bounded well
+      below the 150mb body-parser default.
+    metadata:
+      category: security
+      cwe: CWE-400
+      owasp: A04:2021 - Insecure Design
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    pattern-either:
+      - pattern: "$P.json({ limit: $LIMIT })"
+      - pattern: "$P.urlencoded({ limit: $LIMIT })"
+    metavariable-regex:
+      metavariable: $LIMIT
+      regex: "^['\"]?([1-9][0-9]{1,})([mM][bB]|['\"])?$"
+
+  - id: freeqwenapi.express.logging.request-body
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Entire request body is written to logs. Request bodies may contain
+      prompts, tokens or file metadata. Log only non-sensitive fields.
+    metadata:
+      category: security
+      cwe: CWE-532
+      owasp: A09:2021 - Security Logging and Monitoring Failures
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    pattern-either:
+      - pattern: $LOG(..., JSON.stringify($REQ.body), ...)
+      - pattern: $LOG($REQ.body, ...)
+
+  - id: freeqwenapi.express.cors.reflected-origin
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Access-Control-Allow-Origin is set to a value derived from the request
+      Origin header without an allowlist check. Reflecting arbitrary origins
+      defeats same-origin protections.
+    metadata:
+      category: security
+      cwe: CWE-346
+      owasp: A05:2021 - Security Misconfiguration
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    pattern-either:
+      - pattern: $RES.header('Access-Control-Allow-Origin', $REQ.headers.origin)
+      - pattern: $RES.setHeader('Access-Control-Allow-Origin', $REQ.headers.origin)
+      - pattern: $RES.header('Access-Control-Allow-Origin', $REQ.headers['origin'])
+
+  - id: freeqwenapi.python.auth.fail-open-on-missing-keys
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Proxy authorization proceeds when the configured key list is empty.
+      Missing credentials must fail closed: an empty key file must not
+      silently turn into anonymous access.
+    metadata:
+      category: security
+      cwe: CWE-306
+      owasp: A07:2021 - Identification and Authentication Failures
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - main.py
+        - python_affinity.py
+    patterns:
+      - pattern-inside: |
+          def $FUNC(...):
+              ...
+      - pattern-either:
+          - pattern: |
+              if $KEYS:
+                  ...
+                  return ...
+          - pattern: |
+              if not $KEYS:
+                  ...
+                  return ...
+      - metavariable-regex:
+          metavariable: $KEYS
+          regex: "(?i)(configured_keys|api_keys|auth_keys|allowed|credentials)"
+
+  - id: freeqwenapi.python.command-injection
+    languages: [python]
+    severity: ERROR
+    message: >-
+      os.system is invoked in server code. Use subprocess with an argument
+      list instead of shell invocation.
+    metadata:
+      category: security
+      cwe: CWE-78
+      owasp: A03:2021 - Injection
+      confidence: MEDIUM
+      likelihood: LOW
+      impact: HIGH
+      subcategory: [audit]
+    paths:
+      include:
+        - main.py
+        - python_affinity.py
+    pattern: os.system(...)
+
+  - id: freeqwenapi.javascript.crypto.weak-hash-for-fingerprint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      Unsalted SHA-256 is used to derive a client fingerprint. Prefer an HMAC
+      with a server-side key when the fingerprint must be domain separated.
+    metadata:
+      category: security
+      cwe: CWE-328
+      owasp: A02:2021 - Cryptographic Failures
+      confidence: LOW
+      likelihood: LOW
+      impact: MEDIUM
+      subcategory: [audit]
+    paths:
+      include:
+        - src/
+        - index.js
+    pattern: crypto.createHash('sha256').update(...)

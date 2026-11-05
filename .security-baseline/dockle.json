@@ -1,0 +1,19 @@
+[
+  "CIS-DI-0005|INFO|export DOCKER_CONTENT_TRUST=1 before docker pull/build",
+  "CIS-DI-0006|INFO|not found HEALTHCHECK statement",
+  "CIS-DI-0008|INFO|setgid file: grwxr-xr-x usr/bin/chage",
+  "CIS-DI-0008|INFO|setgid file: grwxr-xr-x usr/bin/expiry",
+  "CIS-DI-0008|INFO|setgid file: grwxr-xr-x usr/sbin/unix_chkpwd",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-- usr/lib/dbus-1.0/dbus-daemon-launch-helper",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/chfn",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/chsh",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/gpasswd",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/mount",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/newgrp",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/passwd",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/su",
+  "CIS-DI-0008|INFO|setuid file: urwxr-xr-x usr/bin/umount",
+  "DKL-LI-0003|INFO|Suspicious directory : root/.npm ",
+  "DKL-LI-0003|INFO|unnecessary file : app/Dockerfile ",
+  "DKL-LI-0003|INFO|unnecessary file : app/docker-compose.yml "
+]

@@ -15,6 +15,7 @@ Write an ADR when the answer to "why is the code shaped this way?" needs to be a
 | [03](03-openai-compatible-shim.md) | Provide OpenAI-compatible API shim | 2025-08-09 | Accepted |
 | [04](04-anti-bot-implementation.md) | Implement anti-bot evasion measures | 2025-08-09 | Accepted |
 | [05](05-fork-information.md) | Record fork provenance | 2025-08-21 | Accepted |
+| [06](06-github-actions-security-pipeline.md) | Run the security pipeline on GitHub Actions | 2026-11-05 | Accepted |
 
 Keep this index in sync when you land a new ADR.
 

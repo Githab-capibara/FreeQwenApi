@@ -1,0 +1,281 @@
+{
+  "comment": [
+    "Machine-readable map of the security areas that the pipeline covers and of",
+    "the tools that cover each area. Every area must be covered by at least",
+    "three distinct tools; a tool may cover more than one area.",
+    "",
+    "The file is validated by tests/security/coverageMatrix.test.js and",
+    "tests/security/test_ci_pipeline_policy.py. A new area, a removed tool or",
+    "a tool that is no longer invoked by the pipeline breaks the build."
+  ],
+  "minimumToolsPerArea": 3,
+  "areas": [
+    {
+      "id": 1,
+      "title": "First-party source code (SAST)",
+      "tools": [
+        {
+          "name": "Semgrep",
+          "match": "semgrep"
+        },
+        {
+          "name": "NodeJSScan",
+          "match": "njsscan"
+        },
+        {
+          "name": "Bandit",
+          "match": "bandit"
+        },
+        {
+          "name": "CodeQL",
+          "match": "github/codeql-action"
+        }
+      ],
+      "files": [
+        ".github/workflows/security.yml",
+        ".github/workflows/codeql.yml"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Third-party dependencies (SCA)",
+      "tools": [
+        {
+          "name": "npm audit",
+          "match": "npm audit"
+        },
+        {
+          "name": "pip-audit",
+          "match": "pip-audit"
+        },
+        {
+          "name": "OSV-Scanner",
+          "match": "OSV_SCANNER_IMAGE"
+        },
+        {
+          "name": "Trivy",
+          "match": "TRIVY_IMAGE"
+        },
+        {
+          "name": "Dependabot",
+          "match": "package-ecosystem"
+        }
+      ],
+      "files": [
+        ".github/workflows/security.yml",
+        ".github/dependabot.yml",
+        ".github/scanner-images.env"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Secrets and credentials",
+      "tools": [
+        {
+          "name": "Gitleaks",
+          "match": "gitleaks"
+        },
+        {
+          "name": "TruffleHog",
+          "match": "trufflehog"
+        },
+        {
+          "name": "Semgrep secrets ruleset",
+          "match": "p/secrets"
+        },
+        {
+          "name": "Trivy secret scanner",
+          "match": "scanners vuln,secret"
+        }
+      ],
+      "files": [
+        ".github/workflows/security.yml",
+        ".github/workflows/container.yml",
+        "scripts/ci/run-semgrep.sh"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Infrastructure as code and deployment configuration",
+      "tools": [
+        {
+          "name": "Hadolint",
+          "match": "hadolint"
+        },
+        {
+          "name": "Checkov",
+          "match": "checkov"
+        },
+        {
+          "name": "Trivy config",
+          "match": "config /repo"
+        },
+        {
+          "name": "Docker Compose config validation",
+          "match": "docker compose config"
+        }
+      ],
+      "files": [
+        ".github/workflows/security.yml"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Container image and runtime artifacts",
+      "tools": [
+        {
+          "name": "Trivy",
+          "match": "TRIVY_IMAGE"
+        },
+        {
+          "name": "Grype",
+          "match": "GRYPE_IMAGE"
+        },
+        {
+          "name": "Dockle",
+          "match": "DOCKLE_IMAGE"
+        },
+        {
+          "name": "Syft",
+          "match": "anchore/sbom-action"
+        }
+      ],
+      "files": [
+        ".github/workflows/container.yml",
+        ".github/scanner-images.env"
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Taint and data-flow analysis",
+      "tools": [
+        {
+          "name": "Bearer",
+          "match": "bearer"
+        },
+        {
+          "name": "Semgrep",
+          "match": "semgrep"
+        },
+        {
+          "name": "CodeQL",
+          "match": "github/codeql-action"
+        }
+      ],
+      "files": [
+        ".github/workflows/security.yml",
+        ".github/workflows/codeql.yml"
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Authentication and authorization enforcement",
+      "tools": [
+        {
+          "name": "Runtime auth-enforcement check",
+          "match": "verify-api-auth-enforcement.sh"
+        },
+        {
+          "name": "Bearer",
+          "match": "bearer"
+        },
+        {
+          "name": "Semgrep",
+          "match": "semgrep"
+        },
+        {
+          "name": "CodeQL",
+          "match": "github/codeql-action"
+        }
+      ],
+      "files": [
+        ".github/workflows/api-security.yml",
+        ".github/workflows/security.yml",
+        ".github/workflows/codeql.yml"
+      ]
+    },
+    {
+      "id": 8,
+      "title": "API contract correctness",
+      "tools": [
+        {
+          "name": "Spectral",
+          "match": "spectral"
+        },
+        {
+          "name": "Redocly",
+          "match": "redocly"
+        },
+        {
+          "name": "oasdiff",
+          "match": "OASDIFF_IMAGE"
+        },
+        {
+          "name": "Schemathesis",
+          "match": "schemathesis"
+        },
+        {
+          "name": "Contract parity check",
+          "match": "verify-api-contract-parity.sh"
+        }
+      ],
+      "files": [
+        ".github/workflows/api-security.yml",
+        ".github/workflows/ci.yml",
+        ".github/scanner-images.env"
+      ]
+    },
+    {
+      "id": 9,
+      "title": "HTTP hardening, headers and error handling",
+      "tools": [
+        {
+          "name": "OWASP ZAP",
+          "match": "zap-api-scan"
+        },
+        {
+          "name": "Semgrep",
+          "match": "semgrep"
+        },
+        {
+          "name": "Checkov",
+          "match": "checkov"
+        },
+        {
+          "name": "Trivy config",
+          "match": "config /repo"
+        }
+      ],
+      "files": [
+        ".github/workflows/api-security.yml",
+        ".github/workflows/security.yml"
+      ]
+    },
+    {
+      "id": 10,
+      "title": "CI/CD pipeline and supply-chain integrity",
+      "tools": [
+        {
+          "name": "actionlint",
+          "match": "actionlint"
+        },
+        {
+          "name": "zizmor",
+          "match": "zizmor"
+        },
+        {
+          "name": "pinact",
+          "match": "pinact"
+        },
+        {
+          "name": "OpenSSF Scorecard",
+          "match": "scorecard"
+        }
+      ],
+      "files": [
+        ".github/workflows/supply-chain.yml",
+        ".github/workflows/scheduled.yml"
+      ]
+    }
+  ]
+}

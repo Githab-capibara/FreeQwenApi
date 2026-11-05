@@ -1,7 +1,10 @@
 # Node.js dependencies
 node_modules/
-package-lock.json
 yarn.lock
+
+# Python dependencies (uv/pip tooling)
+.uv/
+uv.lock.tmp
 
 # Session data and cache
 session/
@@ -40,3 +43,28 @@ venv/
 
 # Authentication data
 src/Authorization.txt
+
+# Proxy credentials (user:pass@ip:port)
+proxies.txt
+
+# CI/security scan artifacts
+.sarif/
+security-reports/
+sbom/
+*.sarif
+/security-report-*.json
+/security-report-*.sarif
+/zap-report.html
+/zap-report.json
+/zap-report.xml
+/zap-report.md
+/sbom.spdx.json
+/trivy-image.json
+/grype-image.json
+/dockle-image.json
+/zap.out
+.schemathesis/
+schemathesis-report/
+
+# Security baselines are tracked on purpose (see scripts/ci/update-baselines.sh)
+!.security-baseline/

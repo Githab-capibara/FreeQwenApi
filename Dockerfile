@@ -2,6 +2,7 @@
 FROM node:20-slim AS base
 
 RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends \
       chromium fonts-liberation libatk-bridge2.0-0 libatk1.0-0 \
       libcups2 libdrm2 libgbm1 libnss3 libxcomposite1 \

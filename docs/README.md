@@ -32,7 +32,7 @@
 | [integrations/](integrations/README.md) | Third-party integrations documentation |
 | [monitoring/](monitoring/README.md) | Monitoring and observability docs |
 | [operations/](operations/README.md) | Operations runbooks and procedures |
-| [pipeline/](pipeline/README.md) | CI/CD pipeline documentation |
+| [pipeline/](pipeline/README.md) | CI/CD pipeline and security coverage matrix |
 | [reference/](reference/README.md) | Environment variables, models, modules, scripts |
 | [security/](security/README.md) | Anti-bot analysis and solutions |
 | [setup/](setup/README.md) | Open WebUI, image generation, model sync |

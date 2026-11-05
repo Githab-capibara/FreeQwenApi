@@ -1,0 +1,34 @@
+# Spectral ruleset for the FreeQwenApi OpenAPI contract.
+#
+# Policy:
+#   - `error` findings fail the API contract job.
+#   - `warn` findings are reported but do not block, to avoid noise from
+#     stylistic preferences that carry no security or correctness impact.
+extends: ["spectral:oas"]
+
+rules:
+  # Security-relevant and correctness-relevant rules stay blocking.
+  operation-operationId: error
+  operation-description: error
+  operation-tags: error
+  oas3-api-servers: error
+  oas3-unused-component: error
+  oas3-valid-media-example: error
+  oas3-valid-schema-example: error
+  oas3-server-not-example.com: error
+  oas3-server-trailing-slash: error
+  info-contact: warn
+  info-description: warn
+  info-license: warn
+  license-url: warn
+  openapi-tags: warn
+  operation-tag-defined: error
+  path-params: error
+  duplicated-entry-in-enum: error
+  no-$ref-siblings: error
+  no-script-tags-in-markdown: error
+  no-eval-in-markdown: error
+  # Style-only rules are advisory.
+  operation-singular-tag: warn
+  tag-description: warn
+  typed-enum: warn

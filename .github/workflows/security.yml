@@ -1,0 +1,352 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Area 3 — Secrets (working tree + full Git history)
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          VERSION='8.30.1'
+          ARCH="$(uname -m)"
+          case "${ARCH}" in
+            x86_64) TARGET='x64' ;;
+            aarch64|arm64) TARGET='arm64' ;;
+            *) echo "::error::unsupported architecture: ${ARCH}"; exit 1 ;;
+          esac
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_${TARGET}.tar.gz" \
+            -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Scan working tree for secrets
+        run: |
+          gitleaks dir . \
+            --config .gitleaks.toml \
+            --redact \
+            --no-banner \
+            --report-format json \
+            --report-path security-report-dir.json \
+            --exit-code 1
+
+      - name: Scan Git history for secrets
+        run: |
+          # Pre-existing history findings are baselined. Any NEW secret fails.
+          gitleaks git . \
+            --config .gitleaks.toml \
+            --baseline-path .gitleaks-baseline.json \
+            --redact \
+            --no-banner \
+            --report-format json \
+            --report-path security-report-git.json \
+            --exit-code 1
+
+  # ---------------------------------------------------------------------------
+  # Area 3 (second engine) — TruffleHog verifies credential material
+  # ---------------------------------------------------------------------------
+  trufflehog:
+    name: TruffleHog credential scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run TruffleHog over Git history
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          docker run --rm \
+            -v "${PWD}:/repo" \
+            -w /repo \
+            "${TRUFFLEHOG_IMAGE}" \
+            git "file:///repo" \
+            --since-commit "${BASE_SHA:-0000000000000000000000000000000000000000}" \
+            --only-verified \
+            --fail \
+            --no-update \
+            --json
+
+      - name: Scan working tree for unverified secrets
+        if: always()
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          docker run --rm \
+            -v "${PWD}:/repo" \
+            -w /repo \
+            "${TRUFFLEHOG_IMAGE}" \
+            filesystem /repo \
+            --no-verification \
+            --exclude-paths /repo/node_modules \
+            --exclude-paths /repo/.git \
+            --fail \
+            --no-update \
+            --json
+
+  # ---------------------------------------------------------------------------
+  # Area 1 — First-party code SAST
+  # Area 6 — Entry points / taint paths
+  # ---------------------------------------------------------------------------
+  sast:
+    name: SAST (Semgrep + NodeJSScan + Bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@101b3474143230c3562bd21f0b3c3f8254784571 # v6.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt bandit==1.9.4
+          # The Node SAST scanner is not published for every runner platform.
+          # The scanner step below fails the build when it is unavailable, so
+          # the installation itself may be skipped.
+          pip install --no-cache-dir njsscan==1.0.2 || \
+            echo "::notice::optional scanner package is unavailable on this platform"
+
+      - name: Semgrep — registry and repository-specific rulesets
+        run: |
+          set -euo pipefail
+          # The runner defines the rule set for both the CI job and the
+          # baseline generator, so the recorded baseline always describes the
+          # scan that the pipeline performs. It fails the job when the scanner
+          # itself fails; a finding is handled by the baseline comparison.
+          bash scripts/ci/run-semgrep.sh security-report-semgrep.json
+          bash scripts/ci/baseline-check.sh semgrep \
+            security-report-semgrep.json \
+            .security-baseline/semgrep.json
+
+      - name: NodeJSScan — Node.js SAST
+        run: |
+          set -euo pipefail
+          if ! command -v njsscan >/dev/null 2>&1; then
+            echo "::error title=NodeJSScan::njsscan is required but unavailable in this environment"
+            exit 1
+          fi
+          njsscan -c .njsscan src/ index.js scripts/ --json > security-report-njsscan.json
+          bash scripts/ci/baseline-check.sh njsscan \
+            security-report-njsscan.json \
+            .security-baseline/njsscan.json
+
+      - name: Bandit — Python SAST
+        run: |
+          set -euo pipefail
+          # Bandit exits non-zero when it reports findings; the baseline
+          # comparison decides whether the build may pass.
+          if ! bandit -c .bandit -r main.py python_affinity.py \
+            -f json -o security-report-bandit.json -q; then
+            echo "::notice title=Bandit::scanner reported findings; the baseline comparison decides"
+          fi
+          bash scripts/ci/baseline-check.sh bandit \
+            security-report-bandit.json \
+            .security-baseline/bandit.json
+
+  # ---------------------------------------------------------------------------
+  # Area 6 — Taint / data-flow analysis
+  # ---------------------------------------------------------------------------
+  taint-analysis:
+    name: Taint analysis (Bearer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run Bearer
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          # Bearer exits non-zero when it reports findings; the baseline
+          # comparison decides whether the build may pass.
+          if ! docker run --rm \
+            -v "${PWD}:/repo" \
+            -w /repo \
+            "${BEARER_IMAGE}" \
+            scan \
+            --report security \
+            --severity critical,high \
+            --format json \
+            . > security-report-bearer.json; then
+            echo "::notice title=Bearer::scanner reported findings; the baseline comparison decides"
+          fi
+          bash scripts/ci/baseline-check.sh bearer \
+            security-report-bearer.json \
+            .security-baseline/bearer.json
+
+  # ---------------------------------------------------------------------------
+  # Area 2 — Dependencies / lock-files (SCA)
+  # ---------------------------------------------------------------------------
+  sca:
+    name: Dependency scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@101b3474143230c3562bd21f0b3c3f8254784571 # v6.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: npm audit
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          # `npm audit` exits non-zero when it finds advisories; the baseline
+          # comparison decides whether the build may pass.
+          if ! npm audit --omit=dev --json > security-report-npm-audit.json; then
+            echo "::notice title=npm audit::advisories reported; the baseline comparison decides"
+          fi
+          bash scripts/ci/baseline-check.sh npm-audit \
+            security-report-npm-audit.json \
+            .security-baseline/npm-audit.json
+
+      - name: pip-audit
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install pip-audit==2.10.0
+          pip-audit -r requirements.txt --strict --format=json
+
+      - name: OSV-Scanner
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          # OSV-Scanner exits non-zero when it finds vulnerabilities; the
+          # baseline comparison decides whether the build may pass.
+          if ! docker run --rm \
+            -v "${PWD}:/repo" \
+            -w /repo \
+            "${OSV_SCANNER_IMAGE}" \
+            scan source /repo --format json > security-report-osv.json; then
+            echo "::notice title=OSV-Scanner::vulnerabilities reported; the baseline comparison decides"
+          fi
+          bash scripts/ci/baseline-check.sh osv \
+            security-report-osv.json \
+            .security-baseline/osv.json
+
+  # ---------------------------------------------------------------------------
+  # Area 4 — IaC and deployment configuration
+  # ---------------------------------------------------------------------------
+  iac:
+    name: IaC scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Hadolint — Dockerfile lint
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          docker run --rm \
+            -v "${PWD}:/repo" \
+            -w /repo \
+            "${HADOLINT_IMAGE}" \
+            hadolint --failure-threshold error Dockerfile
+
+      - name: Checkov — Dockerfile and GitHub Actions policies
+        run: |
+          set -euo pipefail
+          # Checkov exits non-zero when it reports findings; the baseline
+          # comparison decides whether the build may pass.
+          if ! checkov -d . \
+            --compact \
+            --framework dockerfile \
+            --framework github_actions \
+            -o json \
+            --output-file-path security-report-checkov >/dev/null; then
+            echo "::notice title=Checkov::findings reported; the baseline comparison decides"
+          fi
+          REPORT="$(find security-report-checkov -name 'results_json.json' -print -quit)"
+          if [[ -z "${REPORT}" ]]; then
+            echo "::error title=Checkov::Checkov produced no report"
+            exit 1
+          fi
+          bash scripts/ci/baseline-check.sh checkov \
+            "${REPORT}" \
+            .security-baseline/checkov.json
+
+      - name: Trivy — configuration scan
+        run: |
+          set -euo pipefail
+          source .github/scanner-images.env
+          docker run --rm \
+            -v "${PWD}:/repo" \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -w /repo \
+            "${TRIVY_IMAGE}" \
+            config /repo \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --format table
+
+      - name: Docker Compose config validation
+        run: |
+          set -euo pipefail
+          docker compose config --quiet

@@ -8,3 +8,25 @@ uploads
 *.log
 patch-cline.bat
 start.bat
+
+# Secrets and local runtime state — must never enter image layers
+.env
+.env.*
+src/Authorization.txt
+proxies.txt
+*.pem
+*.key
+
+# Local CI and security artifacts
+.github/
+.sarif/
+security-reports/
+sbom/
+*.sarif
+security-report-*.json
+zap-report.*
+sbom.spdx.json
+trivy-image.json
+grype-image.json
+dockle-image.json
+node_modules

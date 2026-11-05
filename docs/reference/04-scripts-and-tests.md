@@ -1,6 +1,6 @@
 # 04. Scripts and Tests Reference
 
-- **Status:** Active
+- **Status:** Accepted
 - **Date:** 2026-08-25
 - **Deciders:** @Githab-capibara
 
@@ -184,6 +184,66 @@ Run with: `npm test`
 | `test_python_affinity.py` | Python account affinity |
 | `test_python_main_affinity.py` | Python main affinity integration |
 
+### Security Pipeline Tests
+
+The files in `/tests/security/` guard the CI/CD pipeline itself. They run in
+the `Security regression tests` job and locally with:
+
+```bash
+node --test tests/security/*.test.js
+python -m unittest discover -s tests/security -p 'test_*.py' -v
+```
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `workflowPolicy.test.js` | Workflow hardening: SHA pins, permissions, timeouts, fail-closed gates |
+| `securityBaseline.test.js` | Baseline files exist, stay sorted and are compared fail-closed |
+| `openapiContract.test.js` | Shape and completeness of the OpenAPI contract |
+| `coverageMatrix.test.js` | Ten security areas, each covered by at least three invoked tools |
+| `dastSpec.test.js` | The DAST scope is derived from the canonical contract |
+| `authProxy.test.js` | The bearer-injecting proxy used by the OWASP ZAP scan |
+| `test_ci_pipeline_policy.py` | Pipeline assets, shell helpers and the coverage matrix (standard library only) |
+
+---
+
+## CI Helper Scripts
+
+The files in `/scripts/ci/` implement the security pipeline. They are invoked
+by the workflows in `.github/workflows/`, not by the application.
+
+| Script | Purpose |
+|--------|---------|
+| `baseline-check.sh` | Compares a scanner report with its baseline; exits non-zero on a new finding |
+| `update-baselines.sh` | Regenerates the baselines in `.security-baseline/` |
+| `run-semgrep.sh` | Runs Semgrep with the rule set that both CI and the baseline generator use |
+| `verify-api-auth-enforcement.sh` | Proves that protected routes answer 401 without a credential and 200 with one |
+| `verify-api-contract-parity.sh` | Reconciles the OpenAPI contract with the Node router and the Python entrypoint |
+| `verify-no-secrets-in-image.sh` | Proves that no credential material is baked into the container image |
+| `auth-proxy.js` | Injects the bearer header between OWASP ZAP and the API server |
+| `build-dast-spec.js` | Derives the DAST subset of the OpenAPI contract |
+
+The container image of every scanner is pinned to a digest in
+`.github/scanner-images.env`. The workflows and `update-baselines.sh` read
+that file, so a scan always runs against exactly the image that the recorded
+baseline describes.
+
+---
+
+## Pipeline Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `.github/scanner-images.env` | Digest pins of every scanner container image |
+| `.github/security-areas.json` | Machine-readable mapping of the ten security areas to their tools |
+| `.github/dependabot.yml` | Weekly update proposals for the dependency and action surface |
+| `.github/CODEOWNERS` | Mandatory reviewers for the pipeline assets |
+| `.semgrep.yml` | Repository-specific Semgrep rules |
+| `.spectral.yaml` | Spectral ruleset for the OpenAPI contract |
+| `.bandit`, `.njsscan` | Scanner configuration |
+| `.gitleaks.toml`, `.gitleaks-baseline.json` | Secret rules and the accepted history findings |
+| `schemathesis.toml` | Property-based testing configuration |
+| `.security-baseline/` | Accepted pre-existing findings, one JSON array and one readable list per scanner |
+
 ---
 
 ## npm Scripts Summary
@@ -204,6 +264,9 @@ Run with: `npm test`
 | `npm run example:direct` | `examples/direct-api/fetch-example.js` | Direct fetch example |
 | `npm run example:axios` | `examples/direct-api/axios-example.js` | Axios example |
 | `npm run example:file-upload` | `examples/file-upload/upload-example.js` | File upload example |
+| `npm run example:streaming-test` | `examples/streaming-test.js` | Streaming latency test |
+| `node examples/test-features.js` | `examples/test-features.js` | t2t / t2i / t2v feature smoke |
+| `node examples/test-video-polling.js` | `examples/test-video-polling.js` | Video polling mode comparison |
 
 ---
 
@@ -211,4 +274,5 @@ Run with: `npm test`
 
 - [Quick Start](../guides/01-quick-start-guide.md)
 - [API Reference](../api/README.md)
+- [CI/CD Pipeline](../pipeline/01-ci-cd-pipeline.md)
 - [Troubleshooting](../troubleshooting/README.md)
