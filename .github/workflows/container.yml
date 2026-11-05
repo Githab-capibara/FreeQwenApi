@@ -11,6 +11,14 @@ on:
       - 'package-lock.json'
       - 'src/**'
       - 'index.js'
+      # A change of the container pipeline itself has to run the container
+      # gates, otherwise the gates could be weakened without a scan.
+      - '.github/workflows/container.yml'
+      - '.github/scanner-images.env'
+      - '.security-baseline/**'
+      - 'scripts/ci/baseline-check.sh'
+      - 'scripts/ci/update-baselines.sh'
+      - 'scripts/ci/verify-no-secrets-in-image.sh'
   pull_request:
     branches: [main]
     paths:
@@ -21,6 +29,12 @@ on:
       - 'package-lock.json'
       - 'src/**'
       - 'index.js'
+      - '.github/workflows/container.yml'
+      - '.github/scanner-images.env'
+      - '.security-baseline/**'
+      - 'scripts/ci/baseline-check.sh'
+      - 'scripts/ci/update-baselines.sh'
+      - 'scripts/ci/verify-no-secrets-in-image.sh'
   workflow_dispatch:
   workflow_call:
 

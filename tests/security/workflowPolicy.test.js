@@ -289,6 +289,27 @@ test('the workflows and the baseline generator use the pinned scanner images', (
   }
 });
 
+test('a workflow that filters by path still triggers on a change to itself', () => {
+  // Otherwise the gates of a workflow could be weakened without the workflow
+  // ever running again.
+  for (const file of workflows) {
+    const name = path.basename(file);
+    const doc = yaml.load(fs.readFileSync(file, 'utf8'));
+    const triggers = doc.on ?? doc[true] ?? {};
+
+    for (const event of ['push', 'pull_request']) {
+      const paths = triggers[event]?.paths;
+      if (!Array.isArray(paths)) continue;
+
+      const relative = path.relative(REPO_ROOT, file).split(path.sep).join('/');
+      assert.ok(
+        paths.includes(relative),
+        `${name}: the ${event} path filter does not include "${relative}", so a change of the workflow would not run it`,
+      );
+    }
+  }
+});
+
 test('a job that invokes a host scanner installs that scanner', () => {
   // A scanner that is invoked but never installed dies with "command not
   // found". The job then fails for a reason that has nothing to do with the
